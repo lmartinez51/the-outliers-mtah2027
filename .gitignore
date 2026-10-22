@@ -1,0 +1,49 @@
+# ---------------------------------------------------------------------------------------------
+# Official Competition .gitignore for Team: The Outliers
+# Repository: the-outliers-mtah2027
+# ---------------------------------------------------------------------------------------------
+
+# -- Private ground truth & Gated Assets -------------------------------------------------------
+*_possession_gt.csv
+*_possession_gt_meta.json
+*_possession_gt_reference.csv
+possession_by_frame.pkl
+
+# Gated raw match data & optical tracking coordinates
+data/
+*.mp4
+*.gzip
+*.pl3container
+*.npz
+
+# -- Submissions & Deliverables (Must be generated reproducibly, never committed) -------------
+submission.csv
+The_Outliers.csv
+The Outliers.csv
+deliverables/*.csv
+
+# Evaluation results folder excludes participant submissions, keeping only official baselines
+evaluation/results/*.csv
+!evaluation/results/baseline_*.csv
+evaluation/reports/
+evaluation/scoreboard.csv
+
+# -- 3D Replay & Derived Tactical Visualizations (Contains raw tracking coordinates) -----------
+src/match_payload.js
+match_payload.js
+barca_3d_interactive_replay.html
+src/barca_3d_interactive_replay.html
+artifacts/
+scratch/
+
+# -- Python, Virtual Environments & Editors ----------------------------------------------------
+.idea/
+.vscode/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.DS_Store
+*.pdf
+organizers/

@@ -1,0 +1,2396 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FC Barcelona 3D Tactical Possession Experience — More than a Hack 2027</title>
+  
+  <!-- Zero-CORS Match Payload Script: Loads window.MATCH_DATA without local fetch() blocking -->
+  <script id="match-payload-script" src="match_payload.js"></script>
+
+  <style>
+    :root {
+      --barca-blue: #004D98;
+      --barca-garnet: #A50044;
+      --barca-gold: #EDBB00;
+      --barca-dark: #070B19;
+      --rival-cyan: #00E5FF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background: var(--barca-dark); color: #F8FAFC; overflow: hidden; width: 100vw; height: 100vh; }
+    #canvas-container { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+
+    /* TOP BROADCAST SCOREBOARD HUD */
+    .hud-top {
+      position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+      width: min(96vw, 1180px);
+      background: linear-gradient(135deg, rgba(7,11,25,0.92) 0%, rgba(0,45,98,0.88) 55%, rgba(125,0,50,0.88) 100%);
+      border: 2px solid rgba(237, 187, 0, 0.65);
+      border-radius: 16px; padding: 10px 18px;
+      box-shadow: 0 12px 35px rgba(0,0,0,0.65);
+      backdrop-filter: blur(10px);
+    }
+    .hud-header-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .brand-badge { display: flex; align-items: center; gap: 10px; }
+    .crest-circle {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: conic-gradient(#004D98 0deg 180deg, #A50044 180deg 360deg);
+      border: 2px solid var(--barca-gold); display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 13px; color: var(--barca-gold); box-shadow: 0 0 12px rgba(237,187,0,0.5);
+    }
+    .brand-title { font-size: 14px; font-weight: 800; letter-spacing: 0.6px; color: var(--barca-gold); text-transform: uppercase; }
+    .brand-sub { font-size: 11px; color: #CBD5E1; }
+
+    /* AI BRAIN COMPARISON SWITCH */
+    .mode-switch-box { display: flex; background: rgba(0,0,0,0.55); border-radius: 10px; padding: 4px; border: 1px solid rgba(255,255,255,0.18); }
+    .mode-btn {
+      border: none; background: transparent; color: #94A3B8; padding: 7px 14px;
+      border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    }
+    .mode-btn.active-our { background: linear-gradient(90deg, var(--barca-blue), var(--barca-garnet)); color: #FFF; box-shadow: 0 0 12px rgba(237,187,0,0.45); }
+    .mode-btn.active-base { background: linear-gradient(90deg, #334155, #475569); color: #FFF; border-color: #94A3B8; box-shadow: 0 0 12px rgba(148,163,184,0.45); }
+    .mode-btn.active-naive { background: #DC2626; color: #FFF; box-shadow: 0 0 14px rgba(220,38,38,0.75); }
+
+    /* TUG OF WAR POSSESSION BAR */
+    .tug-container { margin-top: 8px; }
+    .tug-labels { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; margin-bottom: 4px; }
+    .team-home-lbl { color: #60A5FA; display: flex; align-items: center; gap: 6px; }
+    .team-away-lbl { color: var(--rival-cyan); display: flex; align-items: center; gap: 6px; }
+    .tug-bar-bg { width: 100%; height: 12px; background: rgba(255,255,255,0.15); border-radius: 99px; overflow: hidden; display: flex; position: relative; border: 1px solid rgba(237,187,0,0.4); }
+    #tug-fill-home { height: 100%; background: linear-gradient(90deg, #004D98, #A50044, #EDBB00); width: 50%; transition: width 0.12s ease-out; }
+    #tug-fill-away { height: 100%; background: linear-gradient(90deg, #0284C7, #00E5FF); flex: 1; }
+
+    /* LIVE METRICS PILLS FOR NORMAL FANS */
+    .fan-stats-row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.12); font-size: 12px; flex-wrap: wrap; gap: 8px; }
+    .stat-pill { background: rgba(0,0,0,0.42); padding: 4px 10px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.14); }
+    .stat-pill strong { color: var(--barca-gold); }
+    #flicker-alert {
+      display: none; background: rgba(220, 38, 38, 0.92); color: white; font-weight: 800;
+      padding: 4px 12px; border-radius: 99px; font-size: 12px; animation: pulseAlert 0.5s infinite alternate;
+    }
+    @keyframes pulseAlert { from { transform: scale(1); } to { transform: scale(1.05); } }
+
+    /* CENTER FLOATING EVENT BANNER */
+    #event-toast {
+      position: absolute; top: 155px; left: 50%; transform: translateX(-50%); z-index: 12;
+      padding: 10px 24px; border-radius: 99px; font-size: 15px; font-weight: 900;
+      letter-spacing: 0.5px; pointer-events: none; opacity: 0; transition: opacity 0.25s, transform 0.25s;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+
+    /* LEFT VISUAL LEGEND FOR NON-TECHNICAL FANS */
+    .legend-card {
+      position: absolute; left: 16px; top: 165px; z-index: 10; width: 265px;
+      background: rgba(7, 11, 25, 0.84); border-left: 4px solid var(--barca-gold);
+      border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(8px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5); font-size: 12px;
+    }
+    .legend-title { font-weight: 800; color: var(--barca-gold); margin-bottom: 8px; font-size: 13px; text-transform: uppercase; }
+    .legend-item { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; line-height: 1.25; color: #E2E8F0; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+    /* TV-STYLE ACTIVE CARRIER HUD CARD */
+    #carrier-hud-card {
+      position: absolute; right: 16px; top: 165px; z-index: 10; width: 315px;
+      background: rgba(7, 11, 25, 0.88); border-radius: 12px;
+      padding: 12px 14px; backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-left: 5px solid var(--barca-gold);
+      transition: all 0.25s ease-out;
+    }
+    .carrier-card-title {
+      font-size: 10px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.8px; color: #94A3B8; margin-bottom: 6px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .carrier-main-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .carrier-badge-wrap {
+      display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;
+    }
+    .carrier-crest {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 900; color: #FFF; flex-shrink: 0;
+      border: 2px solid var(--barca-gold);
+      box-shadow: 0 0 12px rgba(237,187,0,0.4);
+      background: conic-gradient(#004D98 0deg 180deg, #A50044 180deg 360deg);
+      transition: all 0.25s;
+    }
+    .carrier-text-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .carrier-player-num { font-size: 14px; font-weight: 900; color: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .carrier-team-lbl { font-size: 11px; color: #CBD5E1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .carrier-jersey-circle {
+      width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
+      background: rgba(255,255,255,0.08); border: 2px solid var(--barca-gold);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 900; color: var(--barca-gold);
+      box-shadow: 0 0 10px rgba(237,187,0,0.3);
+      transition: all 0.25s;
+    }
+    .carrier-accent-bar {
+      width: 100%; height: 3px; border-radius: 2px; margin: 8px 0;
+      background: linear-gradient(90deg, #004D98, #A50044, #EDBB00);
+      transition: background 0.25s;
+    }
+    .carrier-status-row {
+      display: flex; justify-content: space-between; align-items: center; font-size: 11px;
+    }
+    .carrier-status-badge {
+      font-weight: 800; font-size: 11px; padding: 3px 9px; border-radius: 99px;
+      letter-spacing: 0.5px; text-transform: uppercase;
+      transition: all 0.2s;
+    }
+
+    /* TIMELINE OVERLAY PIPS TRACK */
+    .timeline-container {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      min-width: 180px;
+      height: 32px;
+    }
+    #timeline-pips-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .timeline-pip {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 4px;
+      height: 18px;
+      border-radius: 2px;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: transform 0.15s, height 0.15s;
+    }
+    .timeline-pip:hover {
+      transform: translate(-50%, -50%) scale(1.5);
+      height: 24px;
+      z-index: 10;
+    }
+    .pip-home {
+      background: var(--barca-gold);
+      box-shadow: 0 0 8px rgba(237, 187, 0, 0.95);
+    }
+    .pip-away {
+      background: var(--rival-cyan);
+      box-shadow: 0 0 8px rgba(0, 229, 255, 0.95);
+    }
+    .pip-jev {
+      background: #A855F7;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 1.0);
+      width: 5px;
+      height: 20px;
+    }
+    .chip-btn.chip-jev {
+      background: rgba(168, 85, 247, 0.45);
+      border-color: #A855F7;
+    }
+    .chip-btn.chip-jev:hover {
+      background: #A855F7;
+      color: #FFF;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.7);
+    }
+
+    @media (max-width: 900px) {
+      .legend-card { display: none; }
+      #carrier-hud-card {
+        top: auto; bottom: 135px; right: 16px; width: min(92vw, 290px);
+      }
+    }
+
+    /* CLEAN PITCH VIEW (CINEMA MODE) */
+    .legend-card, #carrier-hud-card {
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    body.clean-hud-mode .legend-card {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translateX(-24px);
+    }
+    body.clean-hud-mode #carrier-hud-card {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translateX(24px);
+    }
+    #btn-clean-hud.active {
+      background: var(--barca-gold);
+      color: #000;
+      border-color: var(--barca-gold);
+      box-shadow: 0 0 10px rgba(237, 187, 0, 0.5);
+    }
+
+    /* BOTTOM PLAYBACK & CAMERA DOCK */
+    .hud-bottom {
+      position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 10;
+      width: min(96vw, 1180px);
+      background: rgba(7, 11, 25, 0.92); border: 1px solid rgba(237, 187, 0, 0.5);
+      border-radius: 16px; padding: 12px 18px; backdrop-filter: blur(10px);
+      box-shadow: 0 10px 35px rgba(0,0,0,0.7);
+      transition: padding 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.25s ease, background 0.25s ease;
+    }
+    .hud-bottom.collapsed {
+      padding: 6px 14px;
+      border-radius: 12px;
+      background: rgba(7, 11, 25, 0.88);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+    }
+    #commentary-bar {
+      background: linear-gradient(90deg, rgba(0,77,152,0.45), rgba(165,0,68,0.45));
+      border-left: 4px solid var(--barca-gold); padding: 8px 14px; border-radius: 8px;
+      font-size: 14px; font-weight: 600; color: #FFF; margin-bottom: 10px;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      transition: margin 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .hud-bottom.collapsed #commentary-bar {
+      margin-bottom: 0;
+    }
+    .commentary-left {
+      display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;
+    }
+    #commentary-text {
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .commentary-right {
+      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    }
+    .btn-collapse-toggle {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(237, 187, 0, 0.5);
+      color: var(--barca-gold);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .btn-collapse-toggle:hover {
+      background: rgba(237, 187, 0, 0.25);
+      border-color: var(--barca-gold);
+      box-shadow: 0 0 10px rgba(237, 187, 0, 0.5);
+      color: #FFF;
+    }
+    .btn-collapse-toggle.active-collapsed {
+      background: linear-gradient(90deg, rgba(0,77,152,0.6), rgba(165,0,68,0.6));
+      border-color: var(--barca-gold);
+      color: #FFF;
+    }
+    .hud-bottom-body {
+      transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, margin 0.25s ease;
+      max-height: 420px;
+      opacity: 1;
+      overflow: visible;
+    }
+    .hud-bottom.collapsed .hud-bottom-body {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+      margin: 0;
+    }
+    .controls-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .btn-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .ctrl-btn {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #FFF;
+      padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.15s;
+    }
+    .ctrl-btn:hover { background: rgba(237,187,0,0.28); border-color: var(--barca-gold); }
+    .ctrl-btn.active { background: var(--barca-gold); color: #000; border-color: var(--barca-gold); }
+    .ctrl-btn-reload {
+      background: linear-gradient(90deg, rgba(0,77,152,0.7), rgba(165,0,68,0.7));
+      border: 1px solid var(--barca-gold); color: #FFF;
+    }
+    .ctrl-btn-reload:hover {
+      background: linear-gradient(90deg, var(--barca-blue), var(--barca-garnet));
+      box-shadow: 0 0 10px rgba(237,187,0,0.6);
+    }
+    #timeline-slider { flex: 1; min-width: 180px; accent-color: var(--barca-gold); cursor: pointer; }
+
+    /* KEY MOMENTS TOOLBAR & DRAWER */
+    .moments-toolbar {
+      margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.12);
+      display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .moments-left-group, .moments-right-group, .moments-center-filters {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .moments-title {
+      font-size: 11px; font-weight: 800; color: var(--barca-gold); text-transform: uppercase;
+      letter-spacing: 0.5px; white-space: nowrap; display: flex; align-items: center; gap: 4px;
+    }
+    .ctrl-btn.btn-xs {
+      padding: 3px 8px; font-size: 10px; border-radius: 6px; line-height: 1.2;
+    }
+    .filter-pill {
+      background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #94A3B8; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .filter-pill:hover {
+      background: rgba(237, 187, 0, 0.2); color: #FFF; border-color: rgba(237,187,0,0.5);
+    }
+    .filter-pill.active {
+      background: var(--barca-gold); color: #000; border-color: var(--barca-gold);
+      box-shadow: 0 0 8px rgba(237, 187, 0, 0.45); font-weight: 800;
+    }
+
+    .turnover-chips {
+      gap: 6px; margin-top: 6px; align-items: center; font-size: 11px; color: #CBD5E1;
+      transition: max-height 0.25s ease-out;
+    }
+    /* Mode 1: Compact Horizontal Carousel (Default) */
+    .turnover-chips.compact-carousel {
+      display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+      max-height: 34px; scrollbar-width: thin; padding-bottom: 2px;
+    }
+    /* Mode 2: Multi-Row Drawer with strict 92px height ceiling */
+    .turnover-chips.expanded-drawer {
+      display: flex; flex-wrap: wrap; max-height: 92px; overflow-y: auto; overflow-x: hidden;
+      scrollbar-width: thin; padding-bottom: 2px;
+    }
+    /* Mode 3: Collapsed Hidden */
+    .turnover-chips.collapsed-hidden {
+      display: none !important;
+    }
+
+    .turnover-chips::-webkit-scrollbar { height: 4px; width: 4px; }
+    .turnover-chips::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); border-radius: 4px; }
+    .turnover-chips::-webkit-scrollbar-thumb { background: rgba(237, 187, 0, 0.5); border-radius: 4px; }
+    .turnover-chips::-webkit-scrollbar-thumb:hover { background: var(--barca-gold); }
+
+    .chip-btn {
+      background: rgba(165,0,68,0.55); border: 1px solid var(--barca-gold); color: #FFF;
+      padding: 3px 9px; border-radius: 99px; font-size: 11px; cursor: pointer; font-weight: 700;
+      white-space: nowrap; flex-shrink: 0; transition: all 0.15s;
+    }
+    .chip-btn:hover { background: var(--barca-gold); color: #000; }
+    .chip-btn.active-moment {
+      background: #EDBB00 !important; color: #000 !important; font-weight: 900;
+      box-shadow: 0 0 10px rgba(237, 187, 0, 0.9); border-color: #FFF;
+    }
+    .chip-btn.chip-jev.active-moment {
+      background: #C084FC !important; color: #000 !important;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 1.0); border-color: #FFF;
+    }
+
+    /* DATA MISSING OVERLAY */
+    #data-missing-overlay {
+      position: fixed; inset: 0; background: rgba(7,11,25,0.95); z-index: 9999;
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 20px;
+    }
+    .missing-box {
+      background: rgba(0,45,98,0.35); border: 2px solid var(--barca-gold);
+      border-radius: 18px; padding: 32px 40px; max-width: 580px; box-shadow: 0 15px 40px rgba(0,0,0,0.85);
+    }
+  </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- DATA MISSING OVERLAY -->
+<div id="data-missing-overlay">
+  <div class="missing-box">
+    <div style="font-size: 46px; margin-bottom: 12px;">⚽ 📡</div>
+    <h2 style="color: var(--barca-gold); font-size: 22px; font-weight: 800; margin-bottom: 12px;">DATOS DEL PARTIDO NO DETECTADOS</h2>
+    <p style="color: #CBD5E1; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+      El visor 3D requiere el archivo <code>match_payload.js</code> en el mismo directorio.<br>
+      Ejecuta en tu terminal el generador de repeticiones para exportar la jugada:
+    </p>
+    <pre style="background: #070B19; border: 1px solid rgba(237,187,0,0.4); border-radius: 8px; padding: 12px; font-size: 13px; color: #60A5FA; overflow-x: auto; margin-bottom: 24px; text-align: left;">.\.venv\Scripts\python.exe generate_3d_replay_html.py</pre>
+    <button class="ctrl-btn ctrl-btn-reload" style="padding: 10px 24px; font-size: 14px; border-radius: 99px;" onclick="reloadDataPayload()">
+      🔄 Reintentar Carga
+    </button>
+  </div>
+</div>
+
+<!-- TOP SCOREBOARD HUD -->
+<div class="hud-top">
+  <div class="hud-header-row">
+    <div class="brand-badge">
+      <div class="crest-circle">FCB</div>
+      <div>
+        <div class="brand-title">Barça Innovation Hub × Metrica Sports 3D</div>
+        <div class="brand-sub">More than a Hack 2027 • Explicador Visual de Posesión en Tiempo Real</div>
+        <div style="font-size: 11px; color: var(--barca-gold); font-weight: 700; margin-top: 3px; display: flex; align-items: center; gap: 6px;">
+          <span style="background: rgba(237,187,0,0.18); border: 1px solid var(--barca-gold); border-radius: 4px; padding: 1px 6px; text-transform: uppercase; letter-spacing: 0.5px;">Team: The Outliers</span>
+          <span style="color: #F1F5F9; font-weight: 600;">(Lorenzo Martínez • Ana Karen Arellano • Steven Ibarra)</span>
+        </div>
+      </div>
+    </div>
+    <div class="mode-switch-box">
+      <button id="btn-mode-our" class="mode-btn active-our" onclick="setBrainMode('OUR')">🧠 NUESTRA IA (+ Jev System One)</button>
+      <button id="btn-mode-base" class="mode-btn" onclick="setBrainMode('BASE')">⚙️ MOTOR BASE (Sin Jev AI)</button>
+      <button id="btn-mode-naive" class="mode-btn" onclick="setBrainMode('NAIVE')">🤖 IA COMÚN (Jugador Más Cercano)</button>
+    </div>
+  </div>
+
+  <div class="tug-container">
+    <div class="tug-labels">
+      <span class="team-home-lbl">🔵🔴 FC BARCELONA (LOCAL): <span id="lbl-prob-home">50%</span></span>
+      <span id="lbl-clock" style="color:#EDBB00; font-size:14px;">⏱️ 00:00.0</span>
+      <span class="team-away-lbl"><span id="lbl-prob-away">50%</span> :ATHLETIC CLUB (VISITANTE) ⚪🔴</span>
+    </div>
+    <div class="tug-bar-bg">
+      <div id="tug-fill-home"></div>
+      <div id="tug-fill-away"></div>
+    </div>
+  </div>
+
+  <div class="fan-stats-row">
+    <div class="stat-pill">Cambios (Nuestra IA): <strong id="stat-our-sw">0</strong></div>
+    <div class="stat-pill">Cambios (Motor Base): <strong id="stat-base-sw" style="color:#94A3B8;">0</strong></div>
+    <div class="stat-pill">Cambios Falsos (IA Común): <strong id="stat-naive-sw" style="color:#F87171;">0</strong></div>
+    <div class="stat-pill">Parpadeos Evitados: <strong id="stat-saved">0</strong></div>
+    <div id="flicker-alert">⚠️ ¡ERROR DE IA COMÚN! Falso robo por simple cercanía</div>
+  </div>
+</div>
+
+<!-- FLOATING EVENT BANNER -->
+<div id="event-toast">⚡ ¡RECUPERACIÓN DE BALÓN!</div>
+
+<!-- LEFT FAN LEGEND -->
+<div class="legend-card">
+  <div class="legend-title">Guía Rápida para el Aficionado</div>
+  <div class="legend-item"><span class="dot" style="background:#A50044; border:2px solid #EDBB00;"></span><span><b>FC Barcelona (Azulgrana):</b> Equipo local atacando.</span></div>
+  <div class="legend-item"><span class="dot" style="background:#00E5FF; border:2px solid #FFF;"></span><span><b>Athletic Club (Blanco/Rojo / Cian):</b> Equipo visitante.</span></div>
+  <div class="legend-item"><span class="dot" style="background:#EDBB00; box-shadow:0 0 8px #EDBB00;"></span><span><b>Baliza 3D y Esferas de Energía:</b> Identifica al poseedor activo y el hilo hacia el balón.</span></div>
+  <div class="legend-item"><span class="dot" style="background:transparent; border:2px dashed #EDBB00;"></span><span><b>Escudo 3D Anti-Robo:</b> Protege los pases que pasan cerca de rivales sin ser tocados.</span></div>
+  <div class="legend-item"><span class="dot" style="background:#A855F7;"></span><span><b>Destello Violeta (Jev AI):</b> Desempate inteligente en jugadas divididas.</span></div>
+</div>
+
+<!-- TV-STYLE ACTIVE CARRIER HUD CARD -->
+<div id="carrier-hud-card">
+  <div class="carrier-card-title">
+    <span>📡 Poseedor Activo del Balón</span>
+    <span id="carrier-brain-tag" style="color:var(--barca-gold); font-size:9px; font-weight:800;">NUESTRA IA</span>
+  </div>
+  <div class="carrier-main-row">
+    <div class="carrier-badge-wrap">
+      <div id="carrier-crest" class="carrier-crest">FCB</div>
+      <div class="carrier-text-info">
+        <div id="carrier-player-title" class="carrier-player-num">Pedri</div>
+        <div id="carrier-team-name" class="carrier-team-lbl">FC Barcelona (Local) • Centrocampista</div>
+      </div>
+    </div>
+    <div id="carrier-jersey-box" class="carrier-jersey-circle">#8</div>
+  </div>
+  <div id="carrier-accent-bar" class="carrier-accent-bar"></div>
+  <div class="carrier-status-row">
+    <span style="color:#94A3B8; font-weight:700;">ESTADO DE CONTROL:</span>
+    <span id="carrier-status-badge" class="carrier-status-badge" style="background:rgba(34,197,94,0.25); border:1px solid #22C55E; color:#4ADE80;">EN CONTROL</span>
+  </div>
+</div>
+
+<!-- BOTTOM CONTROLS & NARRATOR -->
+<div class="hud-bottom">
+  <div id="commentary-bar">
+    <div class="commentary-left">
+      <span id="commentary-text">⚽ Cargando repetición 3D interactiva...</span>
+    </div>
+    <div class="commentary-right">
+      <span id="ball-speed-badge" style="font-size:12px; color:#EDBB00; white-space:nowrap;">Vel. Balón: 0.0 m/s</span>
+      <button id="btn-collapse-bottom" class="btn-collapse-toggle" onclick="toggleBottomPanelCollapse()" title="Contraer panel a línea informativa (Tecla C)">
+        <span id="collapse-icon">▼</span>
+        <span id="collapse-label">Contraer</span>
+      </button>
+    </div>
+  </div>
+  <div id="hud-bottom-body" class="hud-bottom-body">
+    <div class="controls-row">
+      <div class="btn-group">
+        <button id="btn-play" class="ctrl-btn active" onclick="togglePlay()">⏸️ Pausa</button>
+        <button class="ctrl-btn" onclick="stepFrames(-25)">⏪ -1s</button>
+        <button class="ctrl-btn" onclick="stepFrames(25)">⏩ +1s</button>
+      </div>
+      <div class="timeline-container">
+        <div id="timeline-pips-track"></div>
+        <input id="timeline-slider" type="range" min="0" max="100" value="0" step="0.1" oninput="onSliderInput(this.value)">
+      </div>
+      <div class="btn-group">
+        <button id="spd-025" class="ctrl-btn" onclick="setSpeed(0.25)">0.25x</button>
+        <button id="spd-05" class="ctrl-btn" onclick="setSpeed(0.5)">0.5x</button>
+        <button id="spd-1" class="ctrl-btn active" onclick="setSpeed(1.0)">1x</button>
+        <button id="spd-2" class="ctrl-btn" onclick="setSpeed(2.0)">2x</button>
+      </div>
+      <div class="btn-group">
+        <button id="cam-tv" class="ctrl-btn active" onclick="setCameraMode('TV')">🎥 TV</button>
+        <button id="cam-drone" class="ctrl-btn" onclick="setCameraMode('DRONE')">🚁 Dron</button>
+        <button id="cam-top" class="ctrl-btn" onclick="setCameraMode('TOP')">🏟️ Aérea</button>
+        <button id="cam-free" class="ctrl-btn" onclick="setCameraMode('FREE')">🕹️ Libre</button>
+      </div>
+      <button id="btn-clean-hud" class="ctrl-btn" onclick="toggleCleanHud()" title="Ocultar/Mostrar paneles laterales (Tecla H)">👁️ Vista</button>
+      <button id="btn-reload" class="ctrl-btn ctrl-btn-reload" onclick="reloadDataPayload()">🔄 Recargar Datos</button>
+    </div>
+    <!-- COMPACT & FILTERABLE KEY MOMENTS TOOLBAR & DRAWER -->
+    <div class="moments-toolbar">
+      <div class="moments-left-group">
+        <span class="moments-title">⚡ Momentos Clave (<span id="moments-count">0</span>)</span>
+        <div class="btn-group">
+          <button class="ctrl-btn btn-xs" onclick="jumpToAdjacentEvent(-1)" title="Momento anterior">⏮️ Ant.</button>
+          <button class="ctrl-btn btn-xs" onclick="jumpToAdjacentEvent(1)" title="Momento siguiente">⏭️ Sig.</button>
+        </div>
+      </div>
+      <div class="moments-center-filters">
+        <button id="filter-moments-all" class="filter-pill active" onclick="setEventFilter('ALL')">Todos</button>
+        <button id="filter-moments-turnover" class="filter-pill" onclick="setEventFilter('TURNOVER')">⚡ Robos</button>
+        <button id="filter-moments-jev" class="filter-pill" onclick="setEventFilter('JEV')">🧠 Jev AI</button>
+      </div>
+      <div class="moments-right-group">
+        <button id="btn-toggle-moments" class="ctrl-btn btn-xs" onclick="cycleMomentsViewMode()">🔼 Expandir Lista</button>
+      </div>
+    </div>
+    <div id="turnover-chips-row" class="turnover-chips compact-carousel"></div>
+  </div>
+</div>
+
+<!-- THREE.JS LIB: LOCAL WITH CDN FALLBACK -->
+<script src="three.min.js"></script>
+<script>
+  if (typeof THREE === 'undefined') {
+    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\\/script>');
+  }
+</script>
+<script>
+if (typeof THREE === 'undefined') {
+  console.error("Three.js library is not loaded.");
+  window.addEventListener('DOMContentLoaded', () => {
+    const c = document.getElementById('canvas-container');
+    if (c) {
+      c.innerHTML = `
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                    background: rgba(165,0,68,0.92); border: 2px solid #EDBB00; border-radius: 14px;
+                    padding: 26px 34px; color: #FFF; text-align: center; max-width: 540px; z-index: 9999;
+                    box-shadow: 0 0 35px rgba(0,0,0,0.85); font-family: system-ui, sans-serif;">
+          <h2 style="color: #EDBB00; font-size: 20px; margin-bottom: 12px;">⚠️ Error de Carga Gráfica 3D</h2>
+          <p style="font-size: 14px; line-height: 1.5; color: #F1F5F9; margin-bottom: 16px;">
+            No se pudo inicializar la librería gráfica Three.js (conexión sin internet o CDN bloqueado en su navegador).
+          </p>
+          <p style="font-size: 13px; color: #CBD5E1; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+            <strong>Solución:</strong> Abra el archivo autocontenido compilado <code>barca_3d_interactive_replay.html</code> en la raíz del repositorio, el cual incluye todas las librerías embebidas localmente sin requerir internet.
+          </p>
+        </div>
+      `;
+    }
+  });
+  throw new Error("Three.js failed to load.");
+}
+</script>
+<script>
+// --- GLOBAL APPLICATION STATE ---
+let brainMode = 'OUR'; // 'OUR' vs 'NAIVE'
+let cameraMode = 'TV'; // 'TV', 'DRONE', 'TOP', 'FREE'
+let isPlaying = true;
+let playbackSpeed = 1.0;
+let currentFrameFloat = 0.0;
+let totalFrames = 0;
+let fps = 25.0;
+let playerMeshes = {};
+let prevBallX = null, prevBallZ = null;
+let lastEventCode = 'NONE';
+let toastTimeoutId = null;
+let isCleanHud = false;
+
+// Key Moments Navigation, Filtering & View State
+let timelineEvents = [];
+let currentEventFilter = 'ALL'; // 'ALL' | 'TURNOVER' | 'JEV'
+let momentsViewMode = 'COMPACT'; // 'COMPACT' | 'EXPANDED' | 'COLLAPSED'
+let currentRenderedChips = [];
+
+const slider = document.getElementById('timeline-slider');
+
+// --- DOM ELEMENT CACHE FOR 60FPS ZERO-LOOKUP RENDER LOOP ---
+const domCache = {
+  lblProbHome: document.getElementById('lbl-prob-home'),
+  lblProbAway: document.getElementById('lbl-prob-away'),
+  tugFillHome: document.getElementById('tug-fill-home'),
+  lblClock: document.getElementById('lbl-clock'),
+  statOurSw: document.getElementById('stat-our-sw'),
+  statBaseSw: document.getElementById('stat-base-sw'),
+  statNaiveSw: document.getElementById('stat-naive-sw'),
+  statSaved: document.getElementById('stat-saved'),
+  ballSpeedBadge: document.getElementById('ball-speed-badge'),
+  flickerAlert: document.getElementById('flicker-alert'),
+  commentaryText: document.getElementById('commentary-text'),
+  carrierCard: document.getElementById('carrier-hud-card'),
+  carrierCrest: document.getElementById('carrier-crest'),
+  carrierPlayerTitle: document.getElementById('carrier-player-title'),
+  carrierTeamName: document.getElementById('carrier-team-name'),
+  carrierJerseyBox: document.getElementById('carrier-jersey-box'),
+  carrierAccentBar: document.getElementById('carrier-accent-bar'),
+  carrierStatusBadge: document.getElementById('carrier-status-badge'),
+  carrierBrainTag: document.getElementById('carrier-brain-tag'),
+  chipsRow: document.getElementById('turnover-chips-row'),
+  momentsCount: document.getElementById('moments-count'),
+  btnCleanHud: document.getElementById('btn-clean-hud')
+};
+
+// --- STATE DIRTY-CHECKING TRACKER ---
+const lastHudState = {
+  probHomePct: -1,
+  frameId: -1,
+  ourSw: -1,
+  baseSw: -1,
+  naiSw: -1,
+  statSaved: -1,
+  speedBadgeStr: '',
+  commentaryStr: '',
+  flickerVisible: null,
+  carrierSignature: '',
+  activeMomentIndex: -1
+};
+
+// --- THREE.JS SCENE SETUP ---
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050814);
+scene.fog = new THREE.FogExp2(0x050814, 0.0045);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 400);
+camera.position.set(0, 46, 62);
+const cameraTarget = new THREE.Vector3(0, 0, 0);
+
+// --- ZERO-GC VECTOR & COLOR SCRATCHPAD FOR 60 FPS RENDER LOOP ---
+const _scratchV3 = new THREE.Vector3();
+const _scratchTarget = new THREE.Vector3();
+const _scratchColorJev = new THREE.Color(0xA855F7);
+const _scratchP1Map = {};
+
+// Renderer with preserveDrawingBuffer enabled for canvas toDataURL captures
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: 'high-performance',
+  preserveDrawingBuffer: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+// --- STADIUM LIGHTING ---
+const ambientLight = new THREE.AmbientLight(0xD8E6FF, 0.65);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0xFFFDF5, 0.95);
+sunLight.position.set(35, 75, 45);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.left = -65;
+sunLight.shadow.camera.right = 65;
+sunLight.shadow.camera.top = 45;
+sunLight.shadow.camera.bottom = -45;
+scene.add(sunLight);
+
+// --- PROCEDURAL SOCCER PITCH TEXTURE WITH MOWED STRIPES & LINES ---
+function createPitchTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2048; canvas.height = 1360;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+
+  // Mowed grass stripes
+  const numStripes = 18;
+  const stripeW = w / numStripes;
+  for (let i = 0; i < numStripes; i++) {
+    ctx.fillStyle = (i % 2 === 0) ? '#1B5E20' : '#236B28';
+    ctx.fillRect(i * stripeW, 0, stripeW + 1, h);
+  }
+
+  // Pitch white markings
+  const padX = 90, padY = 80;
+  const pw = w - 2 * padX, ph = h - 2 * padY;
+  ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(padX, padY, pw, ph);
+
+  // Halfway line & center circle
+  ctx.beginPath(); ctx.moveTo(w / 2, padY); ctx.lineTo(w / 2, h - padY); ctx.stroke();
+  ctx.beginPath(); ctx.arc(w / 2, h / 2, ph * (9.15 / 68.0), 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#FFF'; ctx.beginPath(); ctx.arc(w / 2, h / 2, 8, 0, Math.PI * 2); ctx.fill();
+
+  // Penalty areas
+  const penL = pw * (16.5 / 105.0), penW = ph * (40.3 / 68.0);
+  ctx.strokeRect(padX, (h - penW) / 2, penL, penW);
+  ctx.strokeRect(w - padX - penL, (h - penW) / 2, penL, penW);
+
+  // 6-yard goal boxes
+  const goalL = pw * (5.5 / 105.0), goalW = ph * (18.32 / 68.0);
+  ctx.strokeRect(padX, (h - goalW) / 2, goalL, goalW);
+  ctx.strokeRect(w - padX - goalL, (h - goalW) / 2, goalL, goalW);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.anisotropy = 8;
+  return tex;
+}
+
+let pitchL = 105.0;
+let pitchW = 68.0;
+const pitchGeo = new THREE.PlaneGeometry(pitchL + 10, pitchW + 10);
+const pitchMat = new THREE.MeshStandardMaterial({ map: createPitchTexture(), roughness: 0.85 });
+const pitchMesh = new THREE.Mesh(pitchGeo, pitchMat);
+pitchMesh.rotation.x = -Math.PI / 2;
+pitchMesh.receiveShadow = true;
+scene.add(pitchMesh);
+
+// --- BLAUGRANA LED PERIMETER BOARDS & 3D GOALS ---
+function buildStadiumSurroundings() {
+  const boardMat = new THREE.MeshBasicMaterial({ color: 0x004D98 });
+  const goldMat = new THREE.MeshBasicMaterial({ color: 0xEDBB00 });
+
+  const backBoard = new THREE.Mesh(new THREE.BoxGeometry(pitchL + 4, 1.3, 0.4), boardMat);
+  backBoard.position.set(0, 0.65, -pitchW / 2 - 2.6);
+  scene.add(backBoard);
+
+  const goldTrim = new THREE.Mesh(new THREE.BoxGeometry(pitchL + 4, 0.18, 0.45), goldMat);
+  goldTrim.position.set(0, 1.32, -pitchW / 2 - 2.6);
+  scene.add(goldTrim);
+
+  // 3D Goalposts
+  const postMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, metalness: 0.4, roughness: 0.2 });
+  [-pitchL / 2, pitchL / 2].forEach((gx) => {
+    const goalGrp = new THREE.Group();
+    const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.44, 12), postMat);
+    p1.position.set(gx, 1.22, -3.66);
+    const p2 = p1.clone(); p2.position.set(gx, 1.22, 3.66);
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 7.32, 12), postMat);
+    bar.rotation.x = Math.PI / 2; bar.position.set(gx, 2.44, 0);
+    goalGrp.add(p1, p2, bar);
+    scene.add(goalGrp);
+  });
+}
+buildStadiumSurroundings();
+
+// --- PLAYER 3D AVATARS WITH FLOATING JERSEY NUMBERS ---
+function makeNumberSprite(numStr, teamCode, isGK) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = isGK ? '#F59E0B' : (teamCode === 'H' ? '#A50044' : '#0F172A');
+  ctx.beginPath(); ctx.arc(64, 64, 48, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = 7;
+  ctx.strokeStyle = (teamCode === 'H') ? '#EDBB00' : '#00E5FF';
+  ctx.stroke();
+  ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 52px Segoe UI, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(numStr), 64, 66);
+  const tex = new THREE.CanvasTexture(c);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+  spr.scale.set(1.8, 1.8, 1);
+  spr.position.set(0, 3.05, 0);
+  return spr;
+}
+
+// --- PROCEDURAL HIGH-CONTRAST 3D SOCCER BALL TEXTURE (512x256) ---
+function createSoccerBallTexture() {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 256;
+  const ctx = c.getContext('2d');
+
+  // Pearl-white leather base
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, 512, 256);
+
+  function drawPanel(cx, cy, radius, sides, rot, fillColor, strokeColor, lineWidth) {
+    ctx.beginPath();
+    for (let i = 0; i < sides; i++) {
+      const angle = (i * 2 * Math.PI) / sides + rot;
+      const x = cx + radius * Math.cos(angle);
+      const y = cy + radius * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+
+  const panels = [
+    // Top Row (y = 58)
+    { x: 42, y: 58, r: 24, s: 5, rot: 0, fill: '#002B5C' },
+    { x: 128, y: 58, r: 25, s: 6, rot: Math.PI / 6, fill: '#A50044' },
+    { x: 214, y: 58, r: 24, s: 5, rot: 0, fill: '#002B5C' },
+    { x: 300, y: 58, r: 25, s: 6, rot: Math.PI / 6, fill: '#A50044' },
+    { x: 386, y: 58, r: 24, s: 5, rot: 0, fill: '#002B5C' },
+    { x: 472, y: 58, r: 25, s: 6, rot: Math.PI / 6, fill: '#A50044' },
+
+    // Middle Row - Equator (y = 128)
+    { x: 0, y: 128, r: 25, s: 6, rot: Math.PI / 6, fill: '#A50044' },
+    { x: 85, y: 128, r: 24, s: 5, rot: 0, fill: '#002B5C' },
+    { x: 171, y: 128, r: 25, s: 6, rot: Math.PI / 6, fill: '#A50044' },
+    { x: 256, y: 128, r: 24, s: 5, rot: 0, fill: '#002B5C' },
+    { x: 341, y: 128, r: 25, s: 6, rot: Math.PI / 6, fill: '#A50044' },
+    { x: 426, y: 128, r: 24, s: 5, rot: 0, fill: '#002B5C' },
+    { x: 512, y: 128, r: 25, s: 6, rot: Math.PI / 6, fill: '#A50044' },
+
+    // Bottom Row (y = 198)
+    { x: 42, y: 198, r: 24, s: 5, rot: 0, fill: '#002B5C' },
+    { x: 128, y: 198, r: 25, s: 6, rot: Math.PI / 6, fill: '#A50044' },
+    { x: 214, y: 198, r: 24, s: 5, rot: 0, fill: '#002B5C' },
+    { x: 300, y: 198, r: 25, s: 6, rot: Math.PI / 6, fill: '#A50044' },
+    { x: 386, y: 198, r: 24, s: 5, rot: 0, fill: '#002B5C' },
+    { x: 472, y: 198, r: 25, s: 6, rot: Math.PI / 6, fill: '#A50044' }
+  ];
+
+  ctx.strokeStyle = '#EDBB00';
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  for (let i = 0; i < panels.length; i++) {
+    for (let j = i + 1; j < panels.length; j++) {
+      const dx = Math.abs(panels[i].x - panels[j].x);
+      const dy = Math.abs(panels[i].y - panels[j].y);
+      if (dx < 100 && dy < 85) {
+        ctx.moveTo(panels[i].x, panels[i].y);
+        ctx.lineTo(panels[j].x, panels[j].y);
+      }
+    }
+  }
+  ctx.stroke();
+
+  panels.forEach(p => {
+    drawPanel(p.x, p.y, p.r, p.s, p.rot, p.fill, '#EDBB00', 3.5);
+  });
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
+// --- 3D BALL, PASS SHIELD, SHADOW, TRAIL & CONTROL TETHER ---
+const ballGroup = new THREE.Group();
+const ballTexture = createSoccerBallTexture();
+const ballMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(0.46, 28, 28),
+  new THREE.MeshStandardMaterial({
+    map: ballTexture,
+    roughness: 0.22,
+    metalness: 0.1,
+    emissive: 0xEDBB00,
+    emissiveIntensity: 0.18
+  })
+);
+ballMesh.castShadow = true;
+ballGroup.add(ballMesh);
+
+// 3D Relief Exoskeleton Cage (rotates together with ballMesh)
+const ballReliefCage = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(0.475, 1),
+  new THREE.MeshStandardMaterial({
+    color: 0x1E293B,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.55,
+    roughness: 0.3
+  })
+);
+ballMesh.add(ballReliefCage);
+
+// Anti-theft Pass Shield ('Escudo de Pase Filtrado')
+const shieldMesh = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(1.15, 1),
+  new THREE.MeshBasicMaterial({ color: 0xEDBB00, wireframe: true, transparent: true, opacity: 0.65 })
+);
+shieldMesh.visible = false;
+ballGroup.add(shieldMesh);
+
+const ballLight = new THREE.PointLight(0xEDBB00, 2.2, 14);
+ballLight.position.set(0, 0.8, 0);
+ballGroup.add(ballLight);
+
+// --- JEV AI (SYSTEM ONE) 3D VIOLET NEURAL GYROSCOPE ---
+const jevPulseGroup = new THREE.Group();
+const jevTorusGeo = new THREE.TorusGeometry(0.92, 0.045, 10, 28);
+const jevRing1Mat = new THREE.MeshBasicMaterial({ color: 0xA855F7, transparent: true, opacity: 0.0, depthWrite: false });
+const jevRing1 = new THREE.Mesh(jevTorusGeo, jevRing1Mat);
+const jevRing2Mat = new THREE.MeshBasicMaterial({ color: 0xA855F7, transparent: true, opacity: 0.0, depthWrite: false });
+const jevRing2 = new THREE.Mesh(jevTorusGeo, jevRing2Mat);
+jevRing2.rotation.y = Math.PI / 2;
+jevPulseGroup.add(jevRing1);
+jevPulseGroup.add(jevRing2);
+
+const jevGroundHexGeo = new THREE.RingGeometry(1.55, 1.95, 6);
+const jevGroundHexMat = new THREE.MeshBasicMaterial({ color: 0xA855F7, side: THREE.DoubleSide, transparent: true, opacity: 0.0, depthWrite: false });
+const jevGroundHex = new THREE.Mesh(jevGroundHexGeo, jevGroundHexMat);
+jevGroundHex.rotation.x = -Math.PI / 2;
+jevPulseGroup.add(jevGroundHex);
+
+jevPulseGroup.visible = false;
+ballGroup.add(jevPulseGroup);
+let jevVisualAlpha = 0.0;
+
+scene.add(ballGroup);
+
+// Ground drop shadow directly below the elevated ball
+const ballShadow = new THREE.Mesh(
+  new THREE.CircleGeometry(0.65, 24),
+  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55 })
+);
+ballShadow.rotation.x = -Math.PI / 2; ballShadow.position.y = 0.03;
+scene.add(ballShadow);
+
+// Glowing Ground Possession Halo on the turf directly beneath the ball (complementing ballShadow)
+const ballGroundHalo = new THREE.Mesh(
+  new THREE.RingGeometry(0.68, 1.55, 32),
+  new THREE.MeshBasicMaterial({ color: 0xEDBB00, side: THREE.DoubleSide, transparent: true, opacity: 0.55, depthWrite: false })
+);
+ballGroundHalo.rotation.x = -Math.PI / 2;
+ballGroundHalo.position.y = 0.035;
+scene.add(ballGroundHalo);
+
+// --- SCRUB-SAFE 3D BALL COMET MOTION TRAIL ---
+const BALL_TRAIL_COUNT = 18;
+const ballTrailGroup = new THREE.Group();
+const trailGeo = new THREE.SphereGeometry(0.32, 12, 12);
+const trailSpheres = [];
+for (let k = 0; k < BALL_TRAIL_COUNT; k++) {
+  const trailMat = new THREE.MeshBasicMaterial({
+    color: 0xEDBB00,
+    transparent: true,
+    opacity: 0.0,
+    depthWrite: false
+  });
+  const trailMesh = new THREE.Mesh(trailGeo, trailMat);
+  trailMesh.visible = false;
+  ballTrailGroup.add(trailMesh);
+  trailSpheres.push(trailMesh);
+}
+scene.add(ballTrailGroup);
+
+// Curved 3D Control Tether ('Hilo Dorado de Control') from owner to ball
+const tetherPoints = [];
+for (let i = 0; i <= 20; i++) tetherPoints.push(new THREE.Vector3());
+const tetherGeo = new THREE.BufferGeometry().setFromPoints(tetherPoints);
+const tetherMat = new THREE.LineBasicMaterial({ color: 0xEDBB00, linewidth: 3, transparent: true, opacity: 0.35 });
+const tetherLine = new THREE.Line(tetherGeo, tetherMat);
+scene.add(tetherLine);
+
+// --- 3D VOLUMETRIC ANIMATED ENERGY BEAD CHAIN TETHER ---
+const TETHER_BEADS_COUNT = 16;
+const tetherBeadsGroup = new THREE.Group();
+const tetherBeads = [];
+const beadGeo = new THREE.SphereGeometry(0.16, 10, 10);
+for (let i = 0; i < TETHER_BEADS_COUNT; i++) {
+  const beadMat = new THREE.MeshStandardMaterial({
+    color: 0xEDBB00,
+    emissive: 0xEDBB00,
+    emissiveIntensity: 0.85,
+    roughness: 0.15
+  });
+  const beadMesh = new THREE.Mesh(beadGeo, beadMat);
+  beadMesh.visible = false;
+  tetherBeadsGroup.add(beadMesh);
+  tetherBeads.push(beadMesh);
+}
+tetherBeadsGroup.visible = false;
+scene.add(tetherBeadsGroup);
+
+// --- EA SPORTS FC STYLE 3D ACTIVE CARRIER BEACON ---
+const ownerBeaconGroup = new THREE.Group();
+
+// 1. Outer Pulsing Ground Ring
+const beaconRingGeo = new THREE.RingGeometry(0.95, 1.35, 32);
+const beaconRingMat = new THREE.MeshBasicMaterial({
+  color: 0xEDBB00,
+  side: THREE.DoubleSide,
+  transparent: true,
+  opacity: 0.9
+});
+const beaconRing = new THREE.Mesh(beaconRingGeo, beaconRingMat);
+beaconRing.rotation.x = -Math.PI / 2;
+beaconRing.position.y = 0.05;
+ownerBeaconGroup.add(beaconRing);
+
+// 2. Vertical Spotlight Aura Cylinder (open-ended)
+const beaconAuraGeo = new THREE.CylinderGeometry(0.85, 0.85, 3.2, 24, 1, true);
+const beaconAuraMat = new THREE.MeshBasicMaterial({
+  color: 0xEDBB00,
+  side: THREE.DoubleSide,
+  transparent: true,
+  opacity: 0.18,
+  depthWrite: false
+});
+const beaconAura = new THREE.Mesh(beaconAuraGeo, beaconAuraMat);
+beaconAura.position.y = 1.6;
+ownerBeaconGroup.add(beaconAura);
+
+// 3. Floating 3D Diamond / Chevron Marker Above Head
+const beaconDiamondGeo = new THREE.OctahedronGeometry(0.48, 0);
+const beaconDiamondMat = new THREE.MeshStandardMaterial({
+  color: 0xEDBB00,
+  emissive: 0xEDBB00,
+  emissiveIntensity: 0.8,
+  roughness: 0.1
+});
+const beaconDiamond = new THREE.Mesh(beaconDiamondGeo, beaconDiamondMat);
+beaconDiamond.position.y = 4.1;
+beaconDiamond.castShadow = true;
+ownerBeaconGroup.add(beaconDiamond);
+
+ownerBeaconGroup.visible = false;
+scene.add(ownerBeaconGroup);
+
+// Expanding Shockwave Ring on Touches & Turnovers
+const shockRing = new THREE.Mesh(
+  new THREE.RingGeometry(0.5, 1.15, 32),
+  new THREE.MeshBasicMaterial({ color: 0xEDBB00, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+);
+shockRing.rotation.x = -Math.PI / 2; shockRing.position.y = 0.06;
+scene.add(shockRing);
+let shockScale = 1.0, shockAlpha = 0.0;
+
+// Procedural Kit Texture Generator for Minecraft/Roblox Blocky Torsos (Cached at Module Level)
+function createKitTexture(teamCode, isGK) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const ctx = c.getContext('2d');
+
+  if (isGK) {
+    // High-visibility gold/amber keeper kit (#EAB308)
+    ctx.fillStyle = '#EAB308';
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = '#CA8A04';
+    ctx.fillRect(0, 0, 256, 32);
+    ctx.fillRect(0, 224, 256, 32);
+    ctx.strokeStyle = '#FEF08A';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(12, 12, 232, 232);
+  } else if (teamCode === 'H') {
+    // Classic FC Barcelona vertical Blaugrana stripes (#004D98 and #A50044)
+    ctx.fillStyle = '#004D98';
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = '#A50044';
+    const numStripes = 6;
+    const stripeW = 256 / numStripes;
+    for (let i = 1; i < numStripes; i += 2) {
+      ctx.fillRect(i * stripeW, 0, stripeW, 256);
+    }
+    // Gold collar & waistband accents (#EDBB00)
+    ctx.fillStyle = '#EDBB00';
+    ctx.fillRect(0, 0, 256, 24);
+    ctx.fillRect(0, 232, 256, 24);
+  } else {
+    // Crisp white/slate jersey (#F8FAFC) with electric cyan (#00E5FF) trim
+    ctx.fillStyle = '#F8FAFC';
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = '#00E5FF';
+    ctx.fillRect(0, 0, 256, 28);
+    ctx.fillRect(0, 0, 24, 256);
+    ctx.fillRect(232, 0, 24, 256);
+    ctx.fillStyle = '#0F172A';
+    ctx.fillRect(0, 232, 256, 24);
+  }
+  return new THREE.CanvasTexture(c);
+}
+
+// Module-level persistent cached textures (prevent recreating / double-disposing on hot-reload)
+const sharedKitTexHome = createKitTexture('H', false);
+const sharedKitTexAway = createKitTexture('A', false);
+const sharedKitTexGK = createKitTexture('H', true);
+
+// --- DYNAMIC DATA INITIALIZATION / HOT-RELOAD ---
+function initMatchData(data) {
+  const overlay = document.getElementById('data-missing-overlay');
+  if (!data || !data.frames || data.frames.length === 0) {
+    if (overlay) overlay.style.display = 'flex';
+    totalFrames = 0;
+    return;
+  }
+  if (overlay) overlay.style.display = 'none';
+
+  // Reset ball rolling & HUD dirty-checking state on every payload initialization
+  prevBallX = null;
+  prevBallZ = null;
+  lastEventCode = 'NONE';
+  lastHudState.probHomePct = -1;
+  lastHudState.frameId = -1;
+  lastHudState.ourSw = -1;
+  lastHudState.naiSw = -1;
+  lastHudState.statSaved = -1;
+  lastHudState.speedBadgeStr = '';
+  lastHudState.commentaryStr = '';
+  lastHudState.flickerVisible = null;
+  lastHudState.carrierSignature = '';
+  lastHudState.activeMomentIndex = -1;
+
+  window.MATCH_DATA = data;
+  totalFrames = data.frames.length;
+  fps = data.fps || 25.0;
+  pitchL = data.pitch_length || 105.0;
+  pitchW = data.pitch_width || 68.0;
+
+  // Initialize or update timeline slider bounds
+  if (slider) {
+    slider.max = Math.max(0, totalFrames - 1);
+    if (data.kickoff_frame !== undefined && currentFrameFloat === 0) {
+      currentFrameFloat = Math.min(data.kickoff_frame, totalFrames - 1);
+      slider.value = currentFrameFloat;
+    } else if (currentFrameFloat > totalFrames - 1) {
+      currentFrameFloat = 0;
+      slider.value = 0;
+    }
+  }
+
+  // Populate Visual Timeline Markers on Slider Track with Coalescing & Cooldown
+  const pipsContainer = document.getElementById('timeline-pips-track');
+  if (pipsContainer) pipsContainer.innerHTML = '';
+
+  timelineEvents = [];
+  const turnoverCooldown = Math.round(fps * 1.0); // 1.0s cooldown to deduplicate redundant turnovers
+  const jevCooldown = Math.round(fps * 2.0);      // 2.0s cooldown between consecutive JEV duel activations
+
+  if (data.turnovers && data.turnovers.length > 0) {
+    data.turnovers.forEach((to) => {
+      const fIdx = to.frame_idx;
+      const isClose = timelineEvents.some(e => e.type === 'TURNOVER' && Math.abs(e.frame_idx - fIdx) < turnoverCooldown);
+      if (!isClose) {
+        timelineEvents.push({
+          frame_idx: fIdx,
+          type: 'TURNOVER',
+          team: to.team,
+          label: to.label || `${(to.timestamp_s || fIdx / fps).toFixed(1)}s — ⚡ Robo (${to.team === 'H' ? 'Barça' : 'Rival'})`
+        });
+      }
+    });
+  }
+
+  // Scan frames for key transitions and Jev AI activations with debouncing
+  if (data.frames) {
+    let prevJev = 0;
+    data.frames.forEach((f, idx) => {
+      if (f.ev && f.ev.startsWith('TURNOVER')) {
+        const isClose = timelineEvents.some(e => e.type === 'TURNOVER' && Math.abs(e.frame_idx - idx) < turnoverCooldown);
+        if (!isClose) {
+          timelineEvents.push({
+            frame_idx: idx,
+            type: 'TURNOVER',
+            team: f.ot,
+            label: `${f.t.toFixed(1)}s — ⚡ Robo (${f.ot === 'H' ? 'Barça' : 'Rival'})`
+          });
+        }
+      } else if (f.jev === 1 && prevJev === 0) {
+        const isClose = timelineEvents.some(e => e.type === 'JEV' && Math.abs(e.frame_idx - idx) < jevCooldown);
+        if (!isClose) {
+          timelineEvents.push({
+            frame_idx: idx,
+            type: 'JEV',
+            team: f.ot,
+            label: `${f.t.toFixed(1)}s — 🧠 Jev AI: Jugada Dividida`
+          });
+        }
+      }
+      prevJev = f.jev;
+    });
+  }
+
+  timelineEvents.sort((a, b) => a.frame_idx - b.frame_idx);
+
+  // Overlay pips on slider track with data attributes for filtering
+  if (pipsContainer && totalFrames > 1) {
+    timelineEvents.forEach((evt) => {
+      const pct = (evt.frame_idx / (totalFrames - 1)) * 100.0;
+      const pip = document.createElement('div');
+      pip.className = `timeline-pip ${evt.type === 'JEV' ? 'pip-jev' : (evt.team === 'H' ? 'pip-home' : 'pip-away')}`;
+      pip.dataset.type = evt.type;
+      pip.dataset.team = evt.team;
+      pip.style.left = `${pct}%`;
+      pip.title = evt.label;
+      pip.onclick = (e) => {
+        e.stopPropagation();
+        currentFrameFloat = Math.max(0, evt.frame_idx - (evt.type === 'JEV' ? 8 : 18));
+        if (slider) slider.value = currentFrameFloat;
+        prevBallX = null; prevBallZ = null;
+        triggerEventToast(
+          evt.label,
+          evt.type === 'JEV' ? 'linear-gradient(90deg,#9333EA,#A855F7)' : (evt.team === 'H' ? 'linear-gradient(90deg,#004D98,#A50044)' : '#0284C7')
+        );
+      };
+      pipsContainer.appendChild(pip);
+    });
+  }
+
+  // Populate interactive chips drawer/carousel
+  renderMomentChips();
+
+  // Clear existing players and build new roster meshes with thorough GPU resource disposal
+  for (const idx in playerMeshes) {
+    const pm = playerMeshes[idx];
+    if (pm && pm.group) {
+      pm.group.traverse((child) => {
+        if (child.isMesh || child.isSprite) {
+          if (child.geometry) {
+            child.geometry.dispose();
+          }
+          if (child.material) {
+            const disposeMat = (mat) => {
+              // Dispose dynamic number sprite textures, but protect shared kit textures
+              if (mat.map && mat.map !== sharedKitTexHome && mat.map !== sharedKitTexAway && mat.map !== sharedKitTexGK) {
+                mat.map.dispose();
+              }
+              mat.dispose();
+            };
+            if (Array.isArray(child.material)) {
+              child.material.forEach(disposeMat);
+            } else {
+              disposeMat(child.material);
+            }
+          }
+        }
+      });
+      scene.remove(pm.group);
+    }
+  }
+  playerMeshes = {};
+
+  if (data.roster && data.roster.length > 0) {
+    data.roster.forEach((p) => {
+      const grp = new THREE.Group();
+      const isHome = (p.team === 'H');
+      const bodyColor = p.gk ? 0xEAB308 : (isHome ? 0x004D98 : 0xF8FAFC);
+      const shortsColor = p.gk ? 0x1E293B : (isHome ? 0x002B5C : 0x0F172A);
+
+      // 1. Cubic Head (BoxGeometry(0.50, 0.50, 0.50), skin tone 0xF5D0A9)
+      const head = new THREE.Mesh(
+        new THREE.BoxGeometry(0.50, 0.50, 0.50),
+        new THREE.MeshStandardMaterial({ color: 0xF5D0A9, roughness: 0.6 })
+      );
+      head.position.y = 1.95;
+      head.castShadow = true;
+      grp.add(head);
+
+      // 2. Blocky Hair / Cap Visor (BoxGeometry(0.54, 0.16, 0.54))
+      const hairColor = p.gk ? 0xF59E0B : 0x1E293B;
+      const hair = new THREE.Mesh(
+        new THREE.BoxGeometry(0.54, 0.16, 0.54),
+        new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.7 })
+      );
+      hair.position.y = 2.16;
+      hair.castShadow = true;
+      grp.add(hair);
+
+      // 3. Two Small Front Eyes (BoxGeometry(0.08, 0.08, 0.05)) on +z face
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0F172A });
+      const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.05), eyeMat);
+      eyeL.position.set(-0.12, 1.95, 0.26);
+      grp.add(eyeL);
+
+      const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.05), eyeMat.clone());
+      eyeR.position.set(0.12, 1.95, 0.26);
+      grp.add(eyeR);
+
+      // 4. Blocky Torso (BoxGeometry(0.62, 0.78, 0.34)) with Kit Texture
+      const kitTex = p.gk ? sharedKitTexGK : (isHome ? sharedKitTexHome : sharedKitTexAway);
+      const torso = new THREE.Mesh(
+        new THREE.BoxGeometry(0.62, 0.78, 0.34),
+        new THREE.MeshStandardMaterial({ map: kitTex, roughness: 0.4 })
+      );
+      torso.position.y = 1.28;
+      torso.castShadow = true;
+      grp.add(torso);
+
+      // 5. Articulated Left & Right Arms (BoxGeometry(0.22, 0.68, 0.24) with shoulder pivot)
+      const armGeoL = new THREE.BoxGeometry(0.22, 0.68, 0.24);
+      armGeoL.translate(0, -0.28, 0);
+      const armGeoR = new THREE.BoxGeometry(0.22, 0.68, 0.24);
+      armGeoR.translate(0, -0.28, 0);
+      const armMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.4 });
+
+      const leftArm = new THREE.Mesh(armGeoL, armMat);
+      leftArm.position.set(-0.44, 1.60, 0);
+      leftArm.castShadow = true;
+      grp.add(leftArm);
+
+      const rightArm = new THREE.Mesh(armGeoR, armMat.clone());
+      rightArm.position.set(0.44, 1.60, 0);
+      rightArm.castShadow = true;
+      grp.add(rightArm);
+
+      // 6. Articulated Left & Right Legs (BoxGeometry(0.25, 0.72, 0.26) with hip pivot)
+      const legGeoL = new THREE.BoxGeometry(0.25, 0.72, 0.26);
+      legGeoL.translate(0, -0.34, 0);
+      const legGeoR = new THREE.BoxGeometry(0.25, 0.72, 0.26);
+      legGeoR.translate(0, -0.34, 0);
+      const legMat = new THREE.MeshStandardMaterial({ color: shortsColor, roughness: 0.5 });
+
+      const leftLeg = new THREE.Mesh(legGeoL, legMat);
+      leftLeg.position.set(-0.17, 0.86, 0);
+      leftLeg.castShadow = true;
+      grp.add(leftLeg);
+
+      const rightLeg = new THREE.Mesh(legGeoR, legMat.clone());
+      rightLeg.position.set(0.17, 0.86, 0);
+      rightLeg.castShadow = true;
+      grp.add(rightLeg);
+
+      // 7. Ground Foot Ring
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.55, 0.78, 24),
+        new THREE.MeshBasicMaterial({
+          color: isHome ? 0xEDBB00 : 0x00E5FF,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.22
+        })
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.04;
+      grp.add(ring);
+
+      // 8. Floating Jersey Number Sprite
+      const spriteNum = (p.real_num !== undefined) ? p.real_num : p.num;
+      grp.add(makeNumberSprite(spriteNum, p.team, p.gk));
+
+      grp.visible = false;
+      scene.add(grp);
+
+      playerMeshes[p.idx] = {
+        group: grp,
+        ring: ring,
+        torso: torso,
+        leftArm: leftArm,
+        rightArm: rightArm,
+        leftLeg: leftLeg,
+        rightLeg: rightLeg,
+        yaw: 0.0,
+        team: p.team,
+        num: spriteNum,
+        name: p.name || `Dorsal #${spriteNum}`,
+        short: p.short || p.name || `#${spriteNum}`,
+        pos: p.pos || 'Jugador'
+      };
+    });
+  }
+}
+
+// In-App Hot-Reload Handler: Dynamically reloads match_payload.js without losing camera or speed
+function reloadDataPayload(callback) {
+  const isFile = (window.location.protocol === 'file:');
+  const oldScript = document.getElementById('match-payload-script');
+  if (oldScript) {
+    oldScript.remove();
+  }
+  const script = document.createElement('script');
+  script.id = 'match-payload-script';
+  // Avoid query string params on local file:// URLs so Windows paths resolve safely
+  script.src = isFile ? 'match_payload.js' : `match_payload.js?t=${Date.now()}`;
+  script.onload = () => {
+    if (window.MATCH_DATA && window.MATCH_DATA.frames) {
+      initMatchData(window.MATCH_DATA);
+      triggerEventToast('🔄 Datos del partido actualizados en vivo', 'linear-gradient(90deg,#004D98,#EDBB00)');
+      if (typeof callback === 'function') callback(null, window.MATCH_DATA);
+    } else {
+      triggerEventToast('❌ Error: MATCH_DATA no encontrado', '#DC2626');
+      if (typeof callback === 'function') callback(new Error('MATCH_DATA missing'));
+    }
+  };
+  script.onerror = (err) => {
+    triggerEventToast('❌ Error al cargar match_payload.js', '#DC2626');
+    if (typeof callback === 'function') callback(err);
+  };
+  document.head.appendChild(script);
+}
+
+// --- INTERACTIVE UI HANDLERS ---
+function setBrainMode(mode) {
+  brainMode = mode;
+  const btnOur = document.getElementById('btn-mode-our');
+  const btnBase = document.getElementById('btn-mode-base');
+  const btnNaive = document.getElementById('btn-mode-naive');
+  if (btnOur) btnOur.className = (mode === 'OUR') ? 'mode-btn active-our' : 'mode-btn';
+  if (btnBase) btnBase.className = (mode === 'BASE') ? 'mode-btn active-base' : 'mode-btn';
+  if (btnNaive) btnNaive.className = (mode === 'NAIVE') ? 'mode-btn active-naive' : 'mode-btn';
+}
+function togglePlay() {
+  isPlaying = !isPlaying;
+  const btn = document.getElementById('btn-play');
+  btn.innerText = isPlaying ? '⏸️ Pausa' : '▶️ Reproducir';
+  btn.classList.toggle('active', isPlaying);
+}
+function stepFrames(delta) {
+  if (isNaN(currentFrameFloat)) currentFrameFloat = 0.0;
+  if (totalFrames > 0) {
+    currentFrameFloat = Math.min(totalFrames - 1, Math.max(0, currentFrameFloat + delta));
+    if (slider) slider.value = currentFrameFloat;
+    prevBallX = null; prevBallZ = null;
+  }
+}
+function onSliderInput(val) {
+  const parsed = parseFloat(val);
+  if (!isNaN(parsed) && totalFrames > 0) {
+    currentFrameFloat = Math.max(0, Math.min(totalFrames - 1, parsed));
+    prevBallX = null; prevBallZ = null;
+  }
+}
+function setSpeed(spd) {
+  playbackSpeed = spd;
+  ['025', '05', '1', '2'].forEach(k => document.getElementById('spd-' + k).classList.remove('active'));
+  const idMap = { 0.25: '025', 0.5: '05', 1.0: '1', 2.0: '2' };
+  if (idMap[spd]) document.getElementById('spd-' + idMap[spd]).classList.add('active');
+}
+function setCameraMode(mode) {
+  cameraMode = mode;
+  ['tv', 'drone', 'top', 'free'].forEach(k => {
+    const el = document.getElementById('cam-' + k);
+    if (el) el.classList.remove('active');
+  });
+  const activeEl = document.getElementById('cam-' + mode.toLowerCase());
+  if (activeEl) activeEl.classList.add('active');
+}
+
+// Mouse Drag and Wheel Zoom for Free Orbit Camera
+let isDragging = false;
+let prevMouseX = 0, prevMouseY = 0;
+let freeCamRotY = 0.0, freeCamPitch = 0.58;
+let freeCamDist = 65.0;
+
+container.addEventListener('mousedown', (e) => {
+  if (cameraMode === 'FREE') {
+    isDragging = true;
+    prevMouseX = e.clientX;
+    prevMouseY = e.clientY;
+  }
+});
+window.addEventListener('mousemove', (e) => {
+  if (isDragging && cameraMode === 'FREE') {
+    const dx = e.clientX - prevMouseX;
+    const dy = e.clientY - prevMouseY;
+    prevMouseX = e.clientX;
+    prevMouseY = e.clientY;
+    freeCamRotY += dx * 0.007;
+    freeCamPitch = Math.max(0.08, Math.min(1.45, freeCamPitch + dy * 0.007));
+  }
+});
+window.addEventListener('mouseup', () => { isDragging = false; });
+container.addEventListener('wheel', (e) => {
+  if (cameraMode === 'FREE') {
+    freeCamDist = Math.max(12.0, Math.min(140.0, freeCamDist + e.deltaY * 0.06));
+  }
+}, { passive: true });
+
+// Keyboard navigation shortcuts
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  else if (e.code === 'ArrowLeft') { e.preventDefault(); stepFrames(-25); }
+  else if (e.code === 'ArrowRight') { e.preventDefault(); stepFrames(25); }
+  else if (e.key === '1') { setCameraMode('TV'); }
+  else if (e.key === '2') { setCameraMode('DRONE'); }
+  else if (e.key === '3') { setCameraMode('TOP'); }
+  else if (e.key === '4') { setCameraMode('FREE'); }
+  else if (e.key === 'm' || e.key === 'M') {
+    const nextMode = (brainMode === 'OUR') ? 'BASE' : (brainMode === 'BASE' ? 'NAIVE' : 'OUR');
+    setBrainMode(nextMode);
+  }
+  else if (e.key === 'j' || e.key === 'J') { jumpToAdjacentEvent(-1); }
+  else if (e.key === 'k' || e.key === 'K') { jumpToAdjacentEvent(1); }
+  else if (e.key === 'h' || e.key === 'H') { toggleCleanHud(); }
+  else if (e.key === 'c' || e.key === 'C') { toggleBottomPanelCollapse(); }
+});
+
+// --- BOTTOM PANEL COMPACT / EXPAND TOGGLE ---
+let isBottomCollapsed = false;
+
+function toggleBottomPanelCollapse() {
+  isBottomCollapsed = !isBottomCollapsed;
+  const bottomPanel = document.querySelector('.hud-bottom');
+  if (bottomPanel) {
+    bottomPanel.classList.toggle('collapsed', isBottomCollapsed);
+  }
+  const icon = document.getElementById('collapse-icon');
+  const label = document.getElementById('collapse-label');
+  const btn = document.getElementById('btn-collapse-bottom');
+  if (icon) icon.innerText = isBottomCollapsed ? '▲' : '▼';
+  if (label) label.innerText = isBottomCollapsed ? 'Expandir' : 'Contraer';
+  if (btn) {
+    btn.title = isBottomCollapsed ? 'Expandir panel de controles (Tecla C)' : 'Contraer a línea informativa (Tecla C)';
+    btn.classList.toggle('active-collapsed', isBottomCollapsed);
+  }
+  triggerEventToast(
+    isBottomCollapsed ? '🔽 PANEL INFERIOR CONTRAÍDO (Mayor visibilidad del campo)' : '🔼 PANEL INFERIOR EXPANDIDO',
+    'linear-gradient(90deg, #004D98, #A50044)'
+  );
+}
+
+// --- CLEAN PITCH VIEW (CINEMA MODE) TOGGLE ---
+function toggleCleanHud() {
+  isCleanHud = !isCleanHud;
+  document.body.classList.toggle('clean-hud-mode', isCleanHud);
+  const btn = domCache.btnCleanHud || document.getElementById('btn-clean-hud');
+  if (btn) {
+    btn.classList.toggle('active', isCleanHud);
+    btn.innerText = isCleanHud ? '👁️‍🗨️ Modo Cine' : '👁️ Vista';
+  }
+  // Collapse moments drawer if open to maximize pitch visibility
+  if (isCleanHud && momentsViewMode === 'EXPANDED') {
+    cycleMomentsViewMode();
+  }
+  triggerEventToast(
+    isCleanHud ? '👁️ VISTA LIMPIA ACTIVADA (Paneles laterales ocultos)' : '👁️ VISTA COMPLETA RESTAURADA',
+    'linear-gradient(90deg, #004D98, #EDBB00)'
+  );
+}
+
+// --- KEY MOMENTS NAVIGATION & FILTERING HANDLERS ---
+function setEventFilter(filterType) {
+  currentEventFilter = filterType;
+  ['all', 'turnover', 'jev'].forEach(k => {
+    const el = document.getElementById('filter-moments-' + k);
+    if (el) el.classList.remove('active');
+  });
+  const activeEl = document.getElementById('filter-moments-' + filterType.toLowerCase());
+  if (activeEl) activeEl.classList.add('active');
+
+  // Filter timeline pips on slider track
+  const pips = document.querySelectorAll('.timeline-pip');
+  pips.forEach(pip => {
+    const type = pip.dataset.type;
+    if (filterType === 'ALL' || type === filterType) {
+      pip.style.display = 'block';
+    } else {
+      pip.style.display = 'none';
+    }
+  });
+
+  renderMomentChips();
+}
+
+function renderMomentChips() {
+  const chipsRow = (domCache && domCache.chipsRow) ? domCache.chipsRow : document.getElementById('turnover-chips-row');
+  if (!chipsRow) return;
+  chipsRow.innerHTML = '';
+  currentRenderedChips = [];
+  lastHudState.activeMomentIndex = -1;
+
+  const filteredEvents = timelineEvents.filter(e => {
+    if (currentEventFilter === 'TURNOVER') return e.type === 'TURNOVER';
+    if (currentEventFilter === 'JEV') return e.type === 'JEV';
+    return true;
+  });
+
+  const countBadge = (domCache && domCache.momentsCount) ? domCache.momentsCount : document.getElementById('moments-count');
+  if (countBadge) countBadge.innerText = filteredEvents.length;
+
+  if (filteredEvents.length > 0) {
+    filteredEvents.forEach((evt) => {
+      const btn = document.createElement('button');
+      btn.className = `chip-btn ${evt.type === 'JEV' ? 'chip-jev' : ''}`;
+      btn.innerText = evt.label;
+      btn.dataset.type = evt.type;
+      btn.dataset.frame = evt.frame_idx;
+      btn.onclick = () => {
+        currentFrameFloat = Math.max(0, evt.frame_idx - (evt.type === 'JEV' ? 8 : 18));
+        if (slider) slider.value = currentFrameFloat;
+        prevBallX = null; prevBallZ = null;
+        triggerEventToast(
+          evt.label,
+          evt.type === 'JEV' ? 'linear-gradient(90deg,#9333EA,#A855F7)' : (evt.team === 'H' ? 'linear-gradient(90deg,#004D98,#A50044)' : '#0284C7')
+        );
+      };
+      chipsRow.appendChild(btn);
+      currentRenderedChips.push({ el: btn, event: evt });
+    });
+  } else {
+    const span = document.createElement('span');
+    span.style.color = '#94A3B8';
+    span.style.fontStyle = 'italic';
+    span.innerText = 'No hay momentos con este filtro';
+    chipsRow.appendChild(span);
+  }
+}
+
+function cycleMomentsViewMode() {
+  const chipsRow = (domCache && domCache.chipsRow) ? domCache.chipsRow : document.getElementById('turnover-chips-row');
+  const btn = document.getElementById('btn-toggle-moments');
+  if (!chipsRow) return;
+
+  if (momentsViewMode === 'COMPACT') {
+    momentsViewMode = 'EXPANDED';
+    chipsRow.className = 'turnover-chips expanded-drawer';
+    if (btn) btn.innerText = '🔽 Ocultar Lista';
+  } else if (momentsViewMode === 'EXPANDED') {
+    momentsViewMode = 'COLLAPSED';
+    chipsRow.className = 'turnover-chips collapsed-hidden';
+    if (btn) btn.innerText = '▶️ Mostrar Momentos';
+  } else {
+    momentsViewMode = 'COMPACT';
+    chipsRow.className = 'turnover-chips compact-carousel';
+    if (btn) btn.innerText = '🔼 Expandir Lista';
+  }
+}
+
+function jumpToAdjacentEvent(direction) {
+  if (!timelineEvents || timelineEvents.length === 0) return;
+  const eligibleEvents = timelineEvents.filter(e => {
+    if (currentEventFilter === 'TURNOVER') return e.type === 'TURNOVER';
+    if (currentEventFilter === 'JEV') return e.type === 'JEV';
+    return true;
+  });
+  if (eligibleEvents.length === 0) return;
+
+  let targetEvt = null;
+  if (direction < 0) {
+    for (let i = eligibleEvents.length - 1; i >= 0; i--) {
+      if (eligibleEvents[i].frame_idx < currentFrameFloat - 10) {
+        targetEvt = eligibleEvents[i];
+        break;
+      }
+    }
+    if (!targetEvt) targetEvt = eligibleEvents[eligibleEvents.length - 1];
+  } else {
+    for (let i = 0; i < eligibleEvents.length; i++) {
+      if (eligibleEvents[i].frame_idx > currentFrameFloat + 5) {
+        targetEvt = eligibleEvents[i];
+        break;
+      }
+    }
+    if (!targetEvt) targetEvt = eligibleEvents[0];
+  }
+
+  if (targetEvt) {
+    currentFrameFloat = Math.max(0, targetEvt.frame_idx - (targetEvt.type === 'JEV' ? 8 : 18));
+    if (slider) slider.value = currentFrameFloat;
+    prevBallX = null; prevBallZ = null;
+    triggerEventToast(
+      targetEvt.label,
+      targetEvt.type === 'JEV' ? 'linear-gradient(90deg,#9333EA,#A855F7)' : (targetEvt.team === 'H' ? 'linear-gradient(90deg,#004D98,#A50044)' : '#0284C7')
+    );
+  }
+}
+
+// Horizontal mouse-wheel scrolling for compact carousel
+const _initialChipsRow = document.getElementById('turnover-chips-row');
+if (_initialChipsRow) {
+  _initialChipsRow.addEventListener('wheel', (e) => {
+    if (momentsViewMode === 'COMPACT') {
+      e.preventDefault();
+      _initialChipsRow.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+}
+
+function triggerEventToast(text, bgColor) {
+  const toast = document.getElementById('event-toast');
+  if (toastTimeoutId !== null) {
+    clearTimeout(toastTimeoutId);
+    toastTimeoutId = null;
+  }
+  toast.innerText = text;
+  toast.style.background = bgColor;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateX(-50%) scale(1.06)';
+  toastTimeoutId = setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) scale(0.95)';
+    toastTimeoutId = null;
+  }, 1400);
+}
+
+// --- GLOBAL CONTROLLER API FOR FUTURE REALTIME AI (GEMINI LIVE / MULTIMODAL HOOKS) ---
+window.PossessionViewerAPI = {
+  getCurrentFrameState: function() {
+    if (!window.MATCH_DATA || !window.MATCH_DATA.frames || window.MATCH_DATA.frames.length === 0) {
+      return null;
+    }
+    const idx0 = Math.max(0, Math.min(totalFrames - 1, Math.floor(currentFrameFloat)));
+    const idx1 = Math.max(0, Math.min(totalFrames - 1, idx0 + 1));
+    const alpha = Math.max(0.0, Math.min(1.0, currentFrameFloat - idx0));
+    const f0 = window.MATCH_DATA.frames[idx0] || {};
+    const f1 = window.MATCH_DATA.frames[idx1] || f0;
+    const bx = f0.bx != null && f1.bx != null ? f0.bx + (f1.bx - f0.bx) * alpha : (f0.bx || 0);
+    const by = f0.by != null && f1.by != null ? f0.by + (f1.by - f0.by) * alpha : (f0.by || 0);
+    const bz = f0.bz != null && f1.bz != null ? f0.bz + (f1.bz - f0.bz) * alpha : (f0.bz || 0);
+    const activeTeam = (brainMode === 'OUR') ? f0.ot : ((brainMode === 'BASE') ? (f0.bt || f0.ot) : f0.nt);
+
+    return {
+      frameIndex: idx0,
+      currentFrameFloat: currentFrameFloat,
+      timestamp_s: f0.t,
+      brainMode: brainMode, // 'OUR' vs 'BASE' vs 'NAIVE'
+      activePossessionTeam: activeTeam, // 'H' vs 'A' vs 'D' vs 'X'
+      cameraMode: cameraMode,
+      playbackSpeed: playbackSpeed,
+      isPlaying: isPlaying,
+      ball: {
+        x: bx,
+        y: by,
+        z: bz,
+        speed: f0.spd,
+        valid: f0.v === 1
+      },
+      event: f0.ev,
+      passShieldActive: f0.sh === 1,
+      falseFlicker: f0.flk === 1,
+      jevActive: f0.jev === 1,
+      rawFrame: f0,
+      interpolated: {
+        ball_x: bx,
+        ball_y: by,
+        ball_z: bz,
+        alpha: alpha
+      }
+    };
+  },
+  captureCanvasBase64: function() {
+    if (!renderer || !renderer.domElement) return null;
+    try {
+      return renderer.domElement.toDataURL('image/jpeg', 0.8);
+    } catch (err) {
+      console.error('Error capturing canvas Base64:', err);
+      return null;
+    }
+  },
+  setCameraMode: function(mode) {
+    setCameraMode(mode);
+  },
+  setBrainMode: function(mode) {
+    setBrainMode(mode);
+  },
+  setSpeed: function(speed) {
+    setSpeed(speed);
+  },
+  seekToSecond: function(sec) {
+    if (!window.MATCH_DATA || !window.MATCH_DATA.frames || totalFrames === 0) return;
+    const startSec = (window.MATCH_DATA.frames[0] && window.MATCH_DATA.frames[0].t !== undefined) ? window.MATCH_DATA.frames[0].t : 0;
+    const relSec = (sec >= startSec && startSec > 0) ? (sec - startSec) : sec;
+    const targetFrame = Math.max(0, Math.min(totalFrames - 1, Math.round(relSec * fps)));
+    currentFrameFloat = targetFrame;
+    if (slider) slider.value = targetFrame;
+    prevBallX = null; prevBallZ = null;
+  },
+  togglePlay: function() {
+    togglePlay();
+  },
+  reloadData: function(cb) {
+    reloadDataPayload(cb);
+  },
+  jumpToAdjacentEvent: function(dir) {
+    jumpToAdjacentEvent(dir);
+  },
+  setEventFilter: function(filter) {
+    setEventFilter(filter);
+  },
+  cycleMomentsViewMode: function() {
+    cycleMomentsViewMode();
+  },
+  toggleCleanHud: function() {
+    toggleCleanHud();
+  }
+};
+
+// --- MAIN 60FPS RENDER & INTERPOLATION LOOP ---
+let lastTime = performance.now();
+function animate(now) {
+  requestAnimationFrame(animate);
+  const dt = Math.min((now - lastTime) / 1000.0, 0.1);
+  lastTime = now;
+
+  if (!window.MATCH_DATA || !window.MATCH_DATA.frames || totalFrames === 0) {
+    renderer.render(scene, camera);
+    return;
+  }
+
+  if (isPlaying && totalFrames > 1) {
+    currentFrameFloat += dt * fps * playbackSpeed;
+    if (currentFrameFloat >= totalFrames - 1) currentFrameFloat = 0.0;
+    if (slider) slider.value = currentFrameFloat;
+  }
+
+  if (isNaN(currentFrameFloat) || currentFrameFloat < 0) currentFrameFloat = 0.0;
+  if (currentFrameFloat >= totalFrames - 1) {
+    currentFrameFloat = isPlaying ? 0.0 : totalFrames - 1;
+  }
+
+  const idx0 = Math.max(0, Math.min(totalFrames - 1, Math.floor(currentFrameFloat)));
+  const idx1 = Math.max(0, Math.min(totalFrames - 1, idx0 + 1));
+  const alpha = Math.max(0.0, Math.min(1.0, currentFrameFloat - idx0));
+  const f0 = window.MATCH_DATA.frames[idx0];
+  const f1 = window.MATCH_DATA.frames[idx1] || f0;
+  if (!f0) return;
+
+  // Coordinate mapping: Pitch X -> Three.js X, Pitch Y -> Three.js -Z, Elevation -> Three.js Y
+  let bx = f0.bx + (f1.bx - f0.bx) * alpha;
+  let bz_pitch = -(f0.by + (f1.by - f0.by) * alpha);
+  let by_elev = f0.bz + (f1.bz - f0.bz) * alpha;
+
+  if (isNaN(bx) || !isFinite(bx)) bx = 0.0;
+  if (isNaN(bz_pitch) || !isFinite(bz_pitch)) bz_pitch = 0.0;
+  if (isNaN(by_elev) || !isFinite(by_elev)) by_elev = 0.22;
+
+  ballGroup.position.set(bx, by_elev, bz_pitch);
+  ballShadow.position.set(bx, 0.03, bz_pitch);
+  const shadowScale = Math.max(0.4, 1.1 - by_elev * 0.18);
+  ballShadow.scale.set(shadowScale, shadowScale, 1);
+
+  // Physical Ball Rolling Rotation proportional to displacement over ball radius (0.46m)
+  if (prevBallX !== null && prevBallZ !== null) {
+    const dbx = bx - prevBallX;
+    const dbz = bz_pitch - prevBallZ;
+    if (Math.hypot(dbx, dbz) < 15.0) {
+      ballMesh.rotation.z -= dbx / 0.46;
+      ballMesh.rotation.x += dbz / 0.46;
+    }
+  }
+  prevBallX = bx;
+  prevBallZ = bz_pitch;
+
+  // Determine active possession team based on selected Brain Mode ('OUR' vs 'BASE' vs 'NAIVE')
+  let activeTeam;
+  let probHomePct;
+  if (brainMode === 'OUR') {
+    activeTeam = f0.ot;
+    probHomePct = Math.round(f0.op * 100);
+  } else if (brainMode === 'BASE') {
+    activeTeam = f0.bt || f0.ot;
+    probHomePct = Math.round((f0.bp !== undefined ? f0.bp : f0.op) * 100);
+  } else {
+    activeTeam = f0.nt;
+    probHomePct = (f0.nt === 'H' ? 92 : 8);
+  }
+
+  const teamColorHex = (activeTeam === 'H') ? 0xA50044 : ((activeTeam === 'A') ? 0x00E5FF : 0x64748B);
+  const goldOrCyanHex = (activeTeam === 'H') ? 0xEDBB00 : ((activeTeam === 'A') ? 0x00E5FF : 0x94A3B8);
+
+  ballMesh.material.emissive.setHex(goldOrCyanHex);
+  ballLight.color.setHex(teamColorHex);
+
+  // Glowing Ground Possession Halo on the turf directly beneath the ball (complementing ballShadow)
+  if (f0.v === 1) {
+    ballGroundHalo.visible = true;
+    ballGroundHalo.position.set(bx, 0.035, bz_pitch);
+    ballGroundHalo.material.color.setHex(teamColorHex);
+    const haloPulse = 1.0 + 0.12 * Math.sin(now * 0.007);
+    ballGroundHalo.scale.set(haloPulse, haloPulse, 1);
+  } else {
+    ballGroundHalo.visible = false;
+  }
+
+  // Jev AI (System One) 3D Violet Neural Gyroscope with persistence (~0.45s decay)
+  if (brainMode === 'OUR' && f0.jev === 1 && f0.v === 1) {
+    jevVisualAlpha = 1.0;
+  } else {
+    jevVisualAlpha = Math.max(0.0, jevVisualAlpha - dt * 2.2);
+  }
+
+  if (jevVisualAlpha > 0.01) {
+    jevPulseGroup.visible = true;
+    jevRing1.rotation.x += dt * 5.0;
+    jevRing1.rotation.y += dt * 3.5;
+    jevRing2.rotation.y += dt * 5.0;
+    jevRing2.rotation.z += dt * 2.8;
+    jevGroundHex.rotation.z += dt * 2.0;
+    jevRing1Mat.opacity = jevVisualAlpha * 0.9;
+    jevRing2Mat.opacity = jevVisualAlpha * 0.9;
+    jevGroundHexMat.opacity = jevVisualAlpha * 0.75;
+    jevGroundHex.position.y = 0.04 - by_elev;
+    ballLight.color.lerp(_scratchColorJev, Math.min(1.0, jevVisualAlpha * 1.2));
+  } else {
+    jevPulseGroup.visible = false;
+  }
+
+  // Scrub-Safe 3D Comet Motion Trail (Anti-Glitch Timeline Sampling)
+  if (f0.v === 1) {
+    ballTrailGroup.visible = true;
+    const speedFactor = Math.min(1.0, (f0.spd || 0) / 10.0);
+    const trailColorHex = (jevVisualAlpha > 0.05) ? 0xA855F7 : goldOrCyanHex;
+    for (let k = 1; k <= BALL_TRAIL_COUNT; k++) {
+      const trailFloat = Math.max(0.0, currentFrameFloat - k * 0.45);
+      const t0 = Math.floor(trailFloat);
+      const t1 = Math.min(totalFrames - 1, t0 + 1);
+      const tAlpha = trailFloat - t0;
+      const tf0 = window.MATCH_DATA.frames[t0];
+      const tf1 = window.MATCH_DATA.frames[t1] || tf0;
+      const tx = tf0.bx + (tf1.bx - tf0.bx) * tAlpha;
+      const tz = -(tf0.by + (tf1.by - tf0.by) * tAlpha);
+      const ty = tf0.bz + (tf1.bz - tf0.bz) * tAlpha;
+
+      const trailNode = trailSpheres[k - 1];
+      trailNode.position.set(tx, ty, tz);
+      const taper = 1.0 - k / (BALL_TRAIL_COUNT + 1);
+      trailNode.scale.set(taper, taper, taper);
+      trailNode.material.opacity = taper * speedFactor * 0.75;
+      trailNode.material.color.setHex(trailColorHex);
+      trailNode.visible = (speedFactor > 0.02);
+    }
+  } else {
+    ballTrailGroup.visible = false;
+  }
+
+  // Pass Shield animation
+  shieldMesh.visible = (brainMode === 'OUR' && f0.sh === 1);
+  if (shieldMesh.visible) {
+    shieldMesh.rotation.y += dt * 3.2;
+    shieldMesh.rotation.x += dt * 1.8;
+  }
+
+  // Update players & interpolate positions (Zero-GC using reusable _scratchP1Map)
+  Object.values(playerMeshes).forEach(pm => { pm.group.visible = false; });
+  for (const k in _scratchP1Map) delete _scratchP1Map[k];
+  f1.p.forEach(item => { _scratchP1Map[item[0]] = item; });
+
+  // Dynamic Owner Resolution for OUR vs NAIVE brain modes
+  let activeOwnerIdx = f0.own;
+  if (brainMode === 'NAIVE') {
+    let minBallDist = Infinity;
+    let closestPIdx = -1;
+    f0.p.forEach(item => {
+      const pIdx = item[0];
+      let px = item[1], py = item[2];
+      if (_scratchP1Map[pIdx]) {
+        px += (_scratchP1Map[pIdx][1] - px) * alpha;
+        py += (_scratchP1Map[pIdx][2] - py) * alpha;
+      }
+      const dist = Math.hypot(px - bx, -py - bz_pitch);
+      if (dist < minBallDist) {
+        minBallDist = dist;
+        closestPIdx = pIdx;
+      }
+    });
+    if (closestPIdx >= 0) {
+      activeOwnerIdx = closestPIdx;
+    }
+  }
+
+  const activeOwnerTeam = (playerMeshes[activeOwnerIdx] && brainMode === 'NAIVE') ?
+    playerMeshes[activeOwnerIdx].team : activeTeam;
+  const activeOwnerColorHex = (activeOwnerTeam === 'H') ? 0xEDBB00 : 0x00E5FF;
+
+  let ownerPos = null;
+  f0.p.forEach(item => {
+    const pIdx = item[0];
+    const pm = playerMeshes[pIdx];
+    if (!pm) return;
+    let px = item[1], py = item[2];
+    if (_scratchP1Map[pIdx]) {
+      px += (_scratchP1Map[pIdx][1] - px) * alpha;
+      py += (_scratchP1Map[pIdx][2] - py) * alpha;
+    }
+    pm.group.position.set(px, 0, -py);
+    pm.group.visible = true;
+
+    // Velocity & Heading Calculation
+    const vx = _scratchP1Map[pIdx] ? (_scratchP1Map[pIdx][1] - item[1]) * fps : 0.0;
+    const vz = _scratchP1Map[pIdx] ? -(_scratchP1Map[pIdx][2] - item[2]) * fps : 0.0;
+    const pSpeed = Math.hypot(vx, vz);
+
+    // Target Yaw: Face movement direction if running, or face ball if nearly stationary
+    let targetYaw;
+    if (pSpeed > 0.45) {
+      targetYaw = Math.atan2(vx, vz);
+    } else {
+      targetYaw = Math.atan2(bx - px, bz_pitch - (-py));
+    }
+
+    // Smooth angle interpolation handling [-PI, PI] wrap-around
+    let angleDiff = targetYaw - pm.yaw;
+    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    pm.yaw += angleDiff * Math.min(1.0, dt * 10.0);
+    pm.group.rotation.y = pm.yaw;
+
+    // Minecraft/Roblox Limb Swing Animation
+    const swingAmp = Math.min(0.85, pSpeed * 0.11);
+    const walkPhase = now * 0.012 + pIdx * 1.7;
+
+    pm.leftArm.rotation.x = Math.sin(walkPhase) * swingAmp;
+    pm.rightArm.rotation.x = -Math.sin(walkPhase) * swingAmp;
+    pm.leftLeg.rotation.x = -Math.sin(walkPhase) * swingAmp * 1.1;
+    pm.rightLeg.rotation.x = Math.sin(walkPhase) * swingAmp * 1.1;
+
+    if (pIdx === activeOwnerIdx) {
+      ownerPos = pm.group.position;
+      pm.ring.material.opacity = 0.95;
+      pm.ring.scale.set(1.5, 1.5, 1);
+    } else {
+      pm.ring.material.opacity = 0.22;
+      pm.ring.scale.set(1.0, 1.0, 1);
+    }
+  });
+
+  // Update EA Sports FC Style 3D Active Carrier Beacon
+  if (ownerPos && f0.v === 1) {
+    ownerBeaconGroup.visible = true;
+    ownerBeaconGroup.position.copy(ownerPos);
+
+    // Dynamic Team Colors
+    beaconRingMat.color.setHex(activeOwnerColorHex);
+    beaconAuraMat.color.setHex(activeOwnerColorHex);
+    beaconDiamondMat.color.setHex(activeOwnerColorHex);
+    beaconDiamondMat.emissive.setHex(activeOwnerColorHex);
+
+    // Floating diamond rotation & vertical bobbing
+    beaconDiamond.rotation.y += dt * 3.5;
+    beaconDiamond.position.y = 4.3 + Math.sin(now * 0.006) * 0.22;
+
+    // Ground ring pulsing
+    const ringPulse = 1.0 + 0.18 * Math.sin(now * 0.008);
+    beaconRing.scale.set(ringPulse, ringPulse, 1);
+  } else {
+    ownerBeaconGroup.visible = false;
+  }
+
+  // Update 3D Volumetric Animated Control Tether (Energy Bead Chain + guide line)
+  if (ownerPos && f0.v === 1) {
+    tetherLine.visible = true;
+    tetherMat.color.setHex(activeOwnerColorHex);
+    const posAttr = tetherGeo.attributes.position;
+    
+    // Origin at player's boots / feet (grass level y = 0.22) instead of neck/chest (1.28m)
+    const footY = 0.22;
+    const distToBall = Math.hypot(bx - ownerPos.x, bz_pitch - ownerPos.z);
+    // Natural foot-to-ball arc: low along turf for ground passes, elevated for aerial trajectories
+    const passArcHeight = Math.min(0.65, Math.max(0.06, (by_elev - footY) * 0.4 + distToBall * 0.025));
+
+    for (let i = 0; i <= 20; i++) {
+      const u = i / 20.0;
+      const tx = ownerPos.x + (bx - ownerPos.x) * u;
+      const tz = ownerPos.z + (bz_pitch - ownerPos.z) * u;
+      const ty = footY + (by_elev - footY) * u + Math.sin(u * Math.PI) * passArcHeight;
+      posAttr.setXYZ(i, tx, ty, tz);
+    }
+    posAttr.needsUpdate = true;
+
+    // Animated volumetric energy bead chain
+    tetherBeadsGroup.visible = true;
+    const flowPhase = (now * 0.0025) % 1.0;
+    for (let i = 0; i < TETHER_BEADS_COUNT; i++) {
+      const bead = tetherBeads[i];
+      bead.visible = true;
+      bead.material.color.setHex(activeOwnerColorHex);
+      bead.material.emissive.setHex(activeOwnerColorHex);
+
+      const u = (i / TETHER_BEADS_COUNT + flowPhase) % 1.0;
+      const tx = ownerPos.x + (bx - ownerPos.x) * u;
+      const tz = ownerPos.z + (bz_pitch - ownerPos.z) * u;
+      const ty = footY + (by_elev - footY) * u + Math.sin(u * Math.PI) * passArcHeight;
+      bead.position.set(tx, ty, tz);
+
+      const arcPulse = 0.85 + 0.35 * Math.sin(u * Math.PI);
+      bead.scale.set(arcPulse, arcPulse, arcPulse);
+    }
+  } else {
+    tetherLine.visible = false;
+    tetherBeadsGroup.visible = false;
+    tetherBeads.forEach(b => { b.visible = false; });
+  }
+
+  // Shockwave effect on Touches & Turnovers
+  if (f0.ev !== lastEventCode) {
+    lastEventCode = f0.ev;
+    if (f0.ev.startsWith('TURNOVER')) {
+      shockRing.position.set(bx, 0.06, bz_pitch);
+      shockRing.material.color.setHex(goldOrCyanHex);
+      shockScale = 1.0; shockAlpha = 1.0;
+      triggerEventToast(
+        activeTeam === 'H' ? '⚡ ¡RECUPERACIÓN DEL FC BARCELONA!' : '⚡ ¡ROBO DE BALÓN DEL RIVAL!',
+        activeTeam === 'H' ? 'linear-gradient(90deg,#004D98,#A50044)' : '#0284C7'
+      );
+    } else if (f0.ev === 'SHIELD' && brainMode === 'OUR') {
+      triggerEventToast('🛡️ ESCUDO DE PASE EN TRÁNSITO (Ignora cercanía rival)', 'rgba(237,187,0,0.92)');
+    } else if (f0.ev.startsWith('TOUCH')) {
+      shockRing.position.set(bx, 0.06, bz_pitch);
+      shockRing.material.color.setHex(0xFFFFFF);
+      shockScale = 1.0; shockAlpha = 0.75;
+    }
+  }
+  if (shockAlpha > 0.01) {
+    shockScale += dt * 8.5;
+    shockAlpha = Math.max(0.0, shockAlpha - dt * 1.6);
+    shockRing.scale.set(shockScale, shockScale, 1);
+    shockRing.material.opacity = shockAlpha;
+  } else {
+    shockRing.material.opacity = 0.0;
+  }
+
+  // Smooth Camera Controller (Zero-GC with scratch vectors)
+  if (cameraMode === 'TV') {
+    _scratchV3.set(bx * 0.45, 38, 54);
+    _scratchTarget.set(bx * 0.65, 0.5, bz_pitch * 0.45);
+    camera.position.lerp(_scratchV3, 0.06);
+    cameraTarget.lerp(_scratchTarget, 0.08);
+  } else if (cameraMode === 'DRONE') {
+    _scratchV3.set(bx - 14, 15, bz_pitch + 18);
+    _scratchTarget.set(bx, by_elev, bz_pitch);
+    camera.position.lerp(_scratchV3, 0.08);
+    cameraTarget.lerp(_scratchTarget, 0.12);
+  } else if (cameraMode === 'TOP') {
+    _scratchV3.set(0, 88, 0.01);
+    _scratchTarget.set(0, 0, 0);
+    camera.position.lerp(_scratchV3, 0.08);
+    cameraTarget.lerp(_scratchTarget, 0.08);
+  } else if (cameraMode === 'FREE') {
+    const camX = bx + freeCamDist * Math.sin(freeCamRotY) * Math.cos(freeCamPitch);
+    const camY = Math.max(2.0, freeCamDist * Math.sin(freeCamPitch));
+    const camZ = bz_pitch + freeCamDist * Math.cos(freeCamRotY) * Math.cos(freeCamPitch);
+    _scratchV3.set(camX, camY, camZ);
+    _scratchTarget.set(bx, by_elev, bz_pitch);
+    camera.position.lerp(_scratchV3, 0.12);
+    cameraTarget.lerp(_scratchTarget, 0.12);
+  }
+
+  if (isNaN(camera.position.x) || isNaN(camera.position.y) || isNaN(camera.position.z)) {
+    camera.position.set(0, 46, 62);
+  }
+  if (isNaN(cameraTarget.x) || isNaN(cameraTarget.y) || isNaN(cameraTarget.z)) {
+    cameraTarget.set(0, 0, 0);
+  }
+  camera.lookAt(cameraTarget);
+
+  // Update HUD Scoreboard & Narrator with State Dirty-Checking
+  if (probHomePct !== lastHudState.probHomePct) {
+    lastHudState.probHomePct = probHomePct;
+    const probAwayPct = 100 - probHomePct;
+    if (domCache.lblProbHome) domCache.lblProbHome.innerText = probHomePct + '%';
+    if (domCache.lblProbAway) domCache.lblProbAway.innerText = probAwayPct + '%';
+    if (domCache.tugFillHome) domCache.tugFillHome.style.width = probHomePct + '%';
+  }
+
+  if (f0.fid !== lastHudState.frameId) {
+    lastHudState.frameId = f0.fid;
+    const mins = Math.floor(f0.t / 60);
+    const minsStr = String(mins).padStart(2, '0');
+    const secs = (f0.t % 60).toFixed(1).padStart(4, '0');
+    if (domCache.lblClock) domCache.lblClock.innerText = `⏱️ ${minsStr}:${secs} (Frame ${f0.fid})`;
+  }
+
+  if (f0.our_sw !== lastHudState.ourSw) {
+    lastHudState.ourSw = f0.our_sw;
+    if (domCache.statOurSw) domCache.statOurSw.innerText = f0.our_sw;
+  }
+
+  const curBaseSw = (f0.base_sw !== undefined) ? f0.base_sw : f0.our_sw;
+  if (curBaseSw !== lastHudState.baseSw) {
+    lastHudState.baseSw = curBaseSw;
+    if (domCache.statBaseSw) domCache.statBaseSw.innerText = curBaseSw;
+  }
+
+  if (f0.nai_sw !== lastHudState.naiSw) {
+    lastHudState.naiSw = f0.nai_sw;
+    if (domCache.statNaiveSw) domCache.statNaiveSw.innerText = f0.nai_sw;
+  }
+
+  const curModelSw = (brainMode === 'BASE') ? curBaseSw : f0.our_sw;
+  const savedSw = Math.max(0, f0.nai_sw - curModelSw);
+  if (savedSw !== lastHudState.statSaved) {
+    lastHudState.statSaved = savedSw;
+    if (domCache.statSaved) domCache.statSaved.innerText = savedSw;
+  }
+
+  const speedBadgeStr = `Vel. Balón: ${f0.spd.toFixed(1)} m/s | Altura 3D: ${by_elev.toFixed(1)}m`;
+  if (speedBadgeStr !== lastHudState.speedBadgeStr) {
+    lastHudState.speedBadgeStr = speedBadgeStr;
+    if (domCache.ballSpeedBadge) domCache.ballSpeedBadge.innerText = speedBadgeStr;
+  }
+
+  const isFlicker = (brainMode === 'NAIVE' && f0.flk === 1);
+  if (isFlicker !== lastHudState.flickerVisible) {
+    lastHudState.flickerVisible = isFlicker;
+    if (domCache.flickerAlert) domCache.flickerAlert.style.display = isFlicker ? 'inline-block' : 'none';
+  }
+
+  const commMsg = isFlicker
+    ? '⚠️ ¡ERROR EN IA COMÚN! Como el balón pasó cerca de un rival, la IA común cree erróneamente que cambió de dueño.'
+    : f0.msg;
+  if (commMsg !== lastHudState.commentaryStr) {
+    lastHudState.commentaryStr = commMsg;
+    if (domCache.commentaryText) domCache.commentaryText.innerText = commMsg;
+  }
+
+  // Update TV-Style Active Carrier HUD Card with Dirty-Checking
+  if (domCache.carrierCard && window.MATCH_DATA && window.MATCH_DATA.roster) {
+    const rItem = window.MATCH_DATA.roster[activeOwnerIdx] || (f0.own >= 0 ? window.MATCH_DATA.roster[f0.own] : null);
+    const pNum = rItem ? (rItem.real_num !== undefined ? rItem.real_num : rItem.num) : 10;
+    const pName = rItem ? (rItem.name || `Dorsal #${pNum}`) : `Dorsal #${pNum}`;
+    const pShort = rItem ? (rItem.short || pName) : pName;
+    const pPos = rItem ? (rItem.pos ? ` • ${rItem.pos}` : (rItem.gk ? ' • Portero' : '')) : '';
+    const pTeam = (rItem && brainMode === 'NAIVE') ? rItem.team : activeTeam;
+
+    const isDead = (activeTeam === 'D' || activeTeam === 'X' || f0.v === 0 || f0.ev === 'DEAD');
+    const isHome = (!isDead && pTeam === 'H');
+    const isAway = (!isDead && pTeam === 'A');
+
+    let statusCode = 'CONTROL';
+    if (isDead) {
+      statusCode = 'DEAD';
+    } else if (brainMode === 'OUR' && (f0.jev === 1 || jevVisualAlpha > 0.05)) {
+      statusCode = 'JEV';
+    } else if ((brainMode === 'OUR' || brainMode === 'BASE') && (f0.sh === 1 || f0.ev === 'SHIELD')) {
+      statusCode = 'SHIELD';
+    }
+
+    const carrierSignature = `${brainMode}_${activeOwnerIdx}_${pTeam}_${statusCode}_${f0.v}_${pNum}_${pName}`;
+    if (carrierSignature !== lastHudState.carrierSignature) {
+      lastHudState.carrierSignature = carrierSignature;
+
+      if (domCache.carrierBrainTag) {
+        if (brainMode === 'OUR') {
+          domCache.carrierBrainTag.innerText = '🧠 NUESTRA IA (+ Jev)';
+          domCache.carrierBrainTag.style.color = 'var(--barca-gold)';
+        } else if (brainMode === 'BASE') {
+          domCache.carrierBrainTag.innerText = '⚙️ MOTOR BASE (Sin Jev)';
+          domCache.carrierBrainTag.style.color = '#94A3B8';
+        } else {
+          domCache.carrierBrainTag.innerText = '🤖 IA COMÚN (Cercanía)';
+          domCache.carrierBrainTag.style.color = '#F87171';
+        }
+      }
+
+      if (isDead) {
+        domCache.carrierCard.style.borderLeftColor = '#F59E0B';
+        if (domCache.carrierCrest) {
+          domCache.carrierCrest.innerText = '🛑';
+          domCache.carrierCrest.style.background = 'linear-gradient(135deg, #78350F, #B45309)';
+          domCache.carrierCrest.style.borderColor = '#F59E0B';
+          domCache.carrierCrest.style.boxShadow = '0 0 12px rgba(245,158,11,0.45)';
+        }
+        if (domCache.carrierTeamName) domCache.carrierTeamName.innerText = 'Balón Muerto / Juego Detenido';
+        if (domCache.carrierJerseyBox) {
+          domCache.carrierJerseyBox.innerText = '🛑';
+          domCache.carrierJerseyBox.style.borderColor = '#F59E0B';
+          domCache.carrierJerseyBox.style.color = '#F59E0B';
+        }
+        if (domCache.carrierPlayerTitle) domCache.carrierPlayerTitle.innerText = 'Pausa Táctica (Árbitro / Saque)';
+        if (domCache.carrierAccentBar) domCache.carrierAccentBar.style.background = '#F59E0B';
+      } else if (isHome) {
+        domCache.carrierCard.style.borderLeftColor = 'var(--barca-gold)';
+        if (domCache.carrierCrest) {
+          domCache.carrierCrest.innerText = 'FCB';
+          domCache.carrierCrest.style.background = 'conic-gradient(#004D98 0deg 180deg, #A50044 180deg 360deg)';
+          domCache.carrierCrest.style.borderColor = 'var(--barca-gold)';
+          domCache.carrierCrest.style.boxShadow = '0 0 12px rgba(237,187,0,0.45)';
+        }
+        if (domCache.carrierTeamName) domCache.carrierTeamName.innerText = `FC Barcelona (Local)${pPos}`;
+        if (domCache.carrierJerseyBox) {
+          domCache.carrierJerseyBox.innerText = `#${pNum}`;
+          domCache.carrierJerseyBox.style.borderColor = 'var(--barca-gold)';
+          domCache.carrierJerseyBox.style.color = 'var(--barca-gold)';
+        }
+        if (domCache.carrierPlayerTitle) domCache.carrierPlayerTitle.innerText = pName;
+        if (domCache.carrierAccentBar) domCache.carrierAccentBar.style.background = 'linear-gradient(90deg, #004D98, #A50044, #EDBB00)';
+      } else {
+        domCache.carrierCard.style.borderLeftColor = 'var(--rival-cyan)';
+        if (domCache.carrierCrest) {
+          domCache.carrierCrest.innerText = 'ATH';
+          domCache.carrierCrest.style.background = 'linear-gradient(135deg, #0284C7, #00E5FF)';
+          domCache.carrierCrest.style.borderColor = 'var(--rival-cyan)';
+          domCache.carrierCrest.style.boxShadow = '0 0 12px rgba(0,229,255,0.45)';
+        }
+        if (domCache.carrierTeamName) domCache.carrierTeamName.innerText = `Athletic Club (Visitante)${pPos}`;
+        if (domCache.carrierJerseyBox) {
+          domCache.carrierJerseyBox.innerText = `#${pNum}`;
+          domCache.carrierJerseyBox.style.borderColor = 'var(--rival-cyan)';
+          domCache.carrierJerseyBox.style.color = 'var(--rival-cyan)';
+        }
+        if (domCache.carrierPlayerTitle) domCache.carrierPlayerTitle.innerText = pName;
+        if (domCache.carrierAccentBar) domCache.carrierAccentBar.style.background = 'linear-gradient(90deg, #0284C7, #00E5FF)';
+      }
+
+      // Dynamic Role / Status Text
+      if (domCache.carrierStatusBadge) {
+        if (statusCode === 'DEAD' || isDead) {
+          domCache.carrierStatusBadge.innerText = (f0.ot === 'X') ? 'SIN TIEMPO DE JUEGO (X)' : '🛑 BALÓN MUERTO (D)';
+          domCache.carrierStatusBadge.style.background = 'rgba(245, 158, 11, 0.25)';
+          domCache.carrierStatusBadge.style.borderColor = '#F59E0B';
+          domCache.carrierStatusBadge.style.color = '#FBBF24';
+          domCache.carrierStatusBadge.style.boxShadow = 'none';
+        } else if (statusCode === 'JEV') {
+          domCache.carrierStatusBadge.innerText = 'BALÓN DIVIDIDO (JEV AI)';
+          domCache.carrierStatusBadge.style.background = 'rgba(168, 85, 247, 0.3)';
+          domCache.carrierStatusBadge.style.borderColor = '#A855F7';
+          domCache.carrierStatusBadge.style.color = '#C084FC';
+          domCache.carrierStatusBadge.style.boxShadow = '0 0 10px rgba(168, 85, 247, 0.5)';
+        } else if (statusCode === 'SHIELD') {
+          domCache.carrierStatusBadge.innerText = 'PASE EN TRÁNSITO';
+          domCache.carrierStatusBadge.style.background = 'rgba(237, 187, 0, 0.25)';
+          domCache.carrierStatusBadge.style.borderColor = '#EDBB00';
+          domCache.carrierStatusBadge.style.color = '#EDBB00';
+          domCache.carrierStatusBadge.style.boxShadow = 'none';
+        } else {
+          domCache.carrierStatusBadge.innerText = 'EN CONTROL';
+          domCache.carrierStatusBadge.style.background = 'rgba(34, 197, 94, 0.25)';
+          domCache.carrierStatusBadge.style.borderColor = '#22C55E';
+          domCache.carrierStatusBadge.style.color = '#4ADE80';
+          domCache.carrierStatusBadge.style.boxShadow = '0 0 10px rgba(34, 197, 94, 0.35)';
+        }
+      }
+    }
+  }
+
+  // Active Key Moment Chip Highlighting & Auto-Scroll (Zero-GC Dirty-Checking)
+  if (currentRenderedChips.length > 0) {
+    let activeMomentIdx = -1;
+    for (let i = currentRenderedChips.length - 1; i >= 0; i--) {
+      if (currentFrameFloat >= currentRenderedChips[i].event.frame_idx - 5) {
+        activeMomentIdx = i;
+        break;
+      }
+    }
+    if (activeMomentIdx !== lastHudState.activeMomentIndex) {
+      if (lastHudState.activeMomentIndex >= 0 && currentRenderedChips[lastHudState.activeMomentIndex]) {
+        currentRenderedChips[lastHudState.activeMomentIndex].el.classList.remove('active-moment');
+      }
+      lastHudState.activeMomentIndex = activeMomentIdx;
+      if (activeMomentIdx >= 0 && currentRenderedChips[activeMomentIdx]) {
+        const activeChip = currentRenderedChips[activeMomentIdx].el;
+        activeChip.classList.add('active-moment');
+        if (momentsViewMode === 'COMPACT' && domCache.chipsRow) {
+          const containerRect = domCache.chipsRow.getBoundingClientRect();
+          const chipRect = activeChip.getBoundingClientRect();
+          const offset = chipRect.left - containerRect.left;
+          domCache.chipsRow.scrollTo({
+            left: domCache.chipsRow.scrollLeft + offset - (domCache.chipsRow.clientWidth / 2) + (activeChip.clientWidth / 2),
+            behavior: 'smooth'
+          });
+        }
+      }
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+// Window resize listener
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Initial boot: initialize with window.MATCH_DATA if already present in DOM
+if (window.MATCH_DATA && window.MATCH_DATA.frames) {
+  initMatchData(window.MATCH_DATA);
+} else {
+  // Grace period for large match_payload.js script parsing over local file://
+  let checks = 0;
+  const checkInterval = setInterval(() => {
+    checks++;
+    if (window.MATCH_DATA && window.MATCH_DATA.frames) {
+      clearInterval(checkInterval);
+      initMatchData(window.MATCH_DATA);
+    } else if (checks > 30) { // 1.5 second timeout
+      clearInterval(checkInterval);
+      initMatchData(null);
+    }
+  }, 50);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

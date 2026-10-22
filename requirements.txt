@@ -1,0 +1,11 @@
+# =============================================================================
+# More than a Hack 2027 — Official Pinned Dependencies
+# Team: The Outliers (Lorenzo Martínez, Ana Karen Arellano, Steven Ibarra)
+# Validated on Python 3.10+ / 3.11+ (x86_64 / arm64 / Windows / Linux / macOS)
+# =============================================================================
+
+numpy==2.2.6
+pandas==2.3.3
+scikit-learn==1.7.2
+scipy==1.15.3
+joblib==1.6.0
