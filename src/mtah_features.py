@@ -170,7 +170,7 @@ def extract_streaming_atd(
             players_str = line[c1 + 1 : c2]
 
             # 1. Parse ball observation
-            has_ball = ball_str[0] != "N"
+            has_ball = bool(ball_str and ball_str[0] != "N")
             bx_m, by_m = 0.0, 0.0
             if has_ball:
                 b_c1 = ball_str.find(",")
@@ -197,7 +197,7 @@ def extract_streaming_atd(
             valid_speeds = []
 
             for slot, p in enumerate(players_str.split(";")):
-                if p[0] == "N":
+                if not p or p[0] == "N":
                     continue
                 p_c1 = p.find(",")
                 p_c2 = p.find(",", p_c1 + 1)
@@ -776,6 +776,23 @@ def print_diagnostic_summary(dataset: FeatureDataset, gt_path: Optional[str] = N
     print("=" * 80 + "\n")
 
 
+def main(
+    rebuild: bool = False,
+    data_dir: Optional[str] = None,
+    cache_path: Optional[str] = None,
+) -> FeatureDataset:
+    """Master entrypoint for streaming feature extraction and diagnostic reporting."""
+    t_start = time.time()
+    ds = extract_all_features(
+        data_dir=data_dir,
+        cache_path=cache_path,
+        rebuild=rebuild,
+    )
+    print_diagnostic_summary(ds)
+    print(f"Total script elapsed time: {time.time() - t_start:.2f}s")
+    return ds
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--rebuild", action="store_true", help="force rebuild cache")
@@ -783,11 +800,8 @@ if __name__ == "__main__":
     parser.add_argument("--cache-path", default=None, help="override cache npz path")
     args = parser.parse_args()
 
-    t_start = time.time()
-    ds = extract_all_features(
+    main(
+        rebuild=args.rebuild,
         data_dir=args.data_dir,
         cache_path=args.cache_path,
-        rebuild=args.rebuild,
     )
-    print_diagnostic_summary(ds)
-    print(f"Total script elapsed time: {time.time() - t_start:.2f}s")

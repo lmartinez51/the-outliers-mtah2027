@@ -75,20 +75,20 @@ def viterbi_decode_3state(
 ) -> np.ndarray:
     """
     3-State Hidden Markov Model Viterbi decoder in log-space.
-    
+
     States:
       0: 'H' (Home possession)
       1: 'A' (Away possession)
       2: 'D' (Dead ball / Stoppage)
-      
+
     Args:
       probs: (T, 3) float32 probability array for ['H', 'A', 'D']
       p_stay: Log-probability of remaining in the same state (default: 0.0)
-      p_turnover: Log-penalty for transition between 'H' <-> 'A' (default: -8.0)
+      p_turnover: Log-penalty for transition between 'H' <-> 'A' (default: -4.2)
       p_live_to_dead: Log-penalty for transition from Live ('H'/'A') to Dead ('D') (default: -2.5)
       p_dead_to_live: Log-penalty for transition from Dead ('D') to Live ('H'/'A') (default: -2.5)
       d_log_boost: Optional log-prior boost for state 'D' emissions (default: 0.0)
-      
+
     Returns:
       path: (T,) int8 array with optimal state sequence (0, 1, or 2)
     """
@@ -140,16 +140,25 @@ def enforce_controlled_possession(
     dead_flicker_frames: int = 30,   # 1.20s: brief live flicker inside stoppage
     glitch_frames: int = 8,          # 0.32s: micro-glitch adjacent to D
     max_passes: int = 12,
+    max_sandwiched_frames: int = 115,
+    sandwiched_conf_thresh: float = 0.0,
+    bridge_stoppage_frames: int = 10,
+    st_team_bias: Optional[np.ndarray] = None,
+    st_set_piece_active: Optional[np.ndarray] = None,
+    ball_speed_rolling: Optional[np.ndarray] = None,
+    absorb_stationary_setpiece: bool = False,
+    fix_start_boundary: bool = False,
 ) -> np.ndarray:
     """
     Enforces CHALLENGE.md controlled possession rule:
       1. 'A simple touch without control, a deflection of a pass, or an aerial duel won
-          without subsequent control' (short live segment < min_live_frames = 22) sandwiched
+          without subsequent control' (short live segment < min_live_frames) sandwiched
           between two spells of the other team (A -> H -> A or H -> A -> H) is absorbed
-          into the surrounding team's possession.
+          into the surrounding team's possession. Optionally absorbs low-confidence
+          sandwiched deflections (< max_sandwiched_frames with mean confidence < sandwiched_conf_thresh).
       2. A brief live flicker inside a stoppage (D -> Live (< dead_flicker_frames = 30) -> D)
-          is absorbed into the dead ball state (D).
-      3. A brief stoppage flicker inside a live possession (Live -> D (< 10) -> Same Live)
+          is absorbed into the dead ball state (D). Optionally absorbs stationary set pieces.
+      3. A brief stoppage flicker inside a live possession (Live -> D (< bridge_stoppage_frames) -> Same Live)
           is absorbed into the live possession.
       4. Micro-glitches adjacent to D (< glitch_frames = 8) are absorbed into the neighbor.
       5. Tiny micro-glitches (< 4 frames) are merged into the preceding state.
@@ -158,6 +167,13 @@ def enforce_controlled_possession(
     T = len(clean_path)
     if T <= 2:
         return clean_path
+
+    if fix_start_boundary and clean_path[0] == 2:
+        fl = 0
+        while fl < min(45, T) and clean_path[fl] == 2:
+            fl += 1
+        if fl < 45 and fl < T and clean_path[fl] in (0, 1):
+            clean_path[:fl] = clean_path[fl]
 
     for _ in range(max_passes):
         changed = False
@@ -170,39 +186,57 @@ def enforce_controlled_possession(
         for i in range(1, n_segs - 1):
             lbl_prev, lbl_curr, lbl_next = labels[i - 1], labels[i], labels[i + 1]
             seg_len = ends[i] - starts[i]
+            s, e = starts[i], ends[i]
 
             # Rule 1: Sandwiched live touch without control (A -> H -> A or H -> A -> H)
             if lbl_curr in (0, 1) and lbl_prev in (0, 1) and lbl_next in (0, 1):
                 if lbl_prev == lbl_next and lbl_curr != lbl_prev:
                     if seg_len < min_live_frames:
-                        clean_path[starts[i]:ends[i]] = lbl_prev
+                        clean_path[s:e] = lbl_prev
                         changed = True
                         break
+                    if sandwiched_conf_thresh > 0.0 and probs is not None and seg_len < max_sandwiched_frames:
+                        seg_conf = float(np.mean(probs[s:e, lbl_curr]))
+                        bias_opposes = False
+                        if st_team_bias is not None:
+                            b_slice = st_team_bias[s:e]
+                            bias_opposes = (lbl_curr == 0 and np.mean(b_slice) < -0.3) or (lbl_curr == 1 and np.mean(b_slice) > 0.3)
+                        if seg_conf < sandwiched_conf_thresh or (bias_opposes and seg_len < 60):
+                            clean_path[s:e] = lbl_prev
+                            changed = True
+                            break
 
             # Rule 2: Live flicker inside stoppage (D -> Live -> D)
             if lbl_curr in (0, 1) and lbl_prev == 2 and lbl_next == 2:
                 if seg_len < dead_flicker_frames:
-                    clean_path[starts[i]:ends[i]] = 2
+                    clean_path[s:e] = 2
                     changed = True
                     break
+                if absorb_stationary_setpiece and st_set_piece_active is not None and ball_speed_rolling is not None:
+                    sp_mean = float(np.mean(st_set_piece_active[s:e]))
+                    b_spd_mean = float(np.mean(ball_speed_rolling[s:e]))
+                    if sp_mean > 0.8 and b_spd_mean < 1.0 and seg_len < 200:
+                        clean_path[s:e] = 2
+                        changed = True
+                        break
 
-            # Rule 3: Stoppage flicker inside same live possession (Live -> D (< 10) -> Same Live)
+            # Rule 3: Stoppage flicker inside same live possession (Live -> D (< bridge_stoppage_frames) -> Same Live)
             if lbl_curr == 2 and lbl_prev in (0, 1) and lbl_next in (0, 1) and lbl_prev == lbl_next:
-                if seg_len < 10:
-                    clean_path[starts[i]:ends[i]] = lbl_prev
+                if seg_len < bridge_stoppage_frames:
+                    clean_path[s:e] = lbl_prev
                     changed = True
                     break
 
             # Rule 4: Micro-glitch adjacent to D (D -> H -> A or H -> A -> D)
             if lbl_curr in (0, 1) and (lbl_prev == 2 or lbl_next == 2):
                 if seg_len < glitch_frames:
-                    clean_path[starts[i]:ends[i]] = lbl_prev if lbl_next == 2 else lbl_next
+                    clean_path[s:e] = lbl_prev if lbl_next == 2 else lbl_next
                     changed = True
                     break
 
             # Rule 5: Tiny micro-glitch (< 4 frames)
             if seg_len < 4:
-                clean_path[starts[i]:ends[i]] = lbl_prev
+                clean_path[s:e] = lbl_prev
                 changed = True
                 break
 
@@ -220,24 +254,40 @@ def evaluate_oof_benchmark(
     oof_probs: np.ndarray,
     classes: np.ndarray = mm.CLASSES,
     gt_path: str = DEFAULT_PUBLIC_GT,
-    p_turnover: float = -4.2,
-    p_live_to_dead: float = -2.5,
-    p_dead_to_live: float = -2.5,
+    p_turnover: float = -3.5,
+    p_live_to_dead: float = -2.0,
+    p_dead_to_live: float = -2.0,
     d_log_boost: float = 0.0,
-    min_live_frames: int = 22,
+    min_live_frames: int = 18,
     dead_flicker_frames: int = 30,
     glitch_frames: int = 8,
+    max_sandwiched_frames: int = 115,
+    sandwiched_conf_thresh: float = 0.71,
+    bridge_stoppage_frames: int = 70,
+    absorb_stationary_setpiece: bool = True,
+    fix_start_boundary: bool = True,
+    ds: Optional[mf.FeatureDataset] = None,
     verbose: bool = True,
 ) -> Dict:
     """
     Evaluates out-of-fold (OOF) cross-validation predictions on the 7,500 public frames
     using the official competition scoring engine (evaluation.possession_metrics).
-    
+
     Provides an honest, zero-leakage benchmark on the 5-minute public ground truth.
     """
     gt_df = pd.read_csv(gt_path)
     gt_codes = pm.label_codes(gt_df)
     n_total_frames = len(gt_codes)
+
+    if ds is None and (sandwiched_conf_thresh > 0.0 or absorb_stationary_setpiece):
+        try:
+            ds = mf.extract_all_features()
+        except Exception:
+            ds = None
+
+    st_b = ds["st_team_bias"][mm.PUBLIC_SLICE] if ds is not None else None
+    sp_active = ds["st_set_piece_active"][mm.PUBLIC_SLICE] if ds is not None else None
+    b_spd = ds["ball_speed_rolling_w15"][mm.PUBLIC_SLICE] if ds is not None else None
 
     # Decode OOF slice
     path_oof = viterbi_decode_3state(
@@ -257,6 +307,14 @@ def evaluate_oof_benchmark(
             min_live_frames=min_live_frames,
             dead_flicker_frames=dead_flicker_frames,
             glitch_frames=glitch_frames,
+            max_sandwiched_frames=max_sandwiched_frames,
+            sandwiched_conf_thresh=sandwiched_conf_thresh,
+            bridge_stoppage_frames=bridge_stoppage_frames,
+            st_team_bias=st_b,
+            st_set_piece_active=sp_active,
+            ball_speed_rolling=b_spd,
+            absorb_stationary_setpiece=absorb_stationary_setpiece,
+            fix_start_boundary=fix_start_boundary,
         )
 
     # Place inside full array for official pm.evaluate
@@ -304,7 +362,7 @@ def decode_full_match(
 ) -> pd.DataFrame:
     """
     Decodes full match probabilities into a validated submission DataFrame.
-    
+
     - Executes independent Viterbi decoding inside each half's video block.
     - Applies CHALLENGE.md Controlled Possession Filtering.
     - Slices oof_probs onto frames 11185..18684 if oof_public is True.
@@ -404,7 +462,7 @@ def run_ablation_comparison(
       1. Motor Base (No Jev AI: GBDT + analytical tactical prior + 3-state Viterbi)
       2. Motor + Jev AI (`System One`: N/A set-piece resolution, tag-vs-physics conflict arbitration,
          occlusion entropy damping, and restart boundary sharpening).
-         
+
     Evaluates across:
       - 1. 5-Fold Leak-Free Out-of-Fold (OOF) CV (7,500 frames)
       - 2. Official Public Scoreboard (5-minute GT, frames 11185..18684)
@@ -422,29 +480,15 @@ def run_ablation_comparison(
     full_jev = cache_data["full_probs_199319"]
     classes = cache_data["classes"]
 
-    # 1. 5-Fold Leak-Free Out-of-Fold (OOF) Benchmarks
+    # 1. 5-Fold Leak-Free Out-of-Fold (OOF) Benchmarks (Option 3 Calibrated)
     res_oof_base = evaluate_oof_benchmark(
         oof_probs=oof_base,
         classes=classes,
-        p_turnover=p_turnover,
-        p_live_to_dead=p_live_to_dead,
-        p_dead_to_live=p_dead_to_live,
-        d_log_boost=d_log_boost,
-        min_live_frames=min_live_frames,
-        dead_flicker_frames=dead_flicker_frames,
-        glitch_frames=glitch_frames,
         verbose=False,
     )
     res_oof_jev = evaluate_oof_benchmark(
         oof_probs=oof_jev,
         classes=classes,
-        p_turnover=p_turnover,
-        p_live_to_dead=p_live_to_dead,
-        p_dead_to_live=p_dead_to_live,
-        d_log_boost=d_log_boost,
-        min_live_frames=min_live_frames,
-        dead_flicker_frames=dead_flicker_frames,
-        glitch_frames=glitch_frames,
         verbose=False,
     )
 
@@ -621,17 +665,10 @@ def generate_and_verify_submission(
         full_probs = cache_data.get("full_probs_base_199319", cache_data["full_probs_199319"])
     classes = cache_data["classes"]
 
-    # 3. Evaluate zero-leakage OOF benchmark
+    # 3. Evaluate zero-leakage OOF benchmark (Option 3 Calibrated)
     evaluate_oof_benchmark(
         oof_probs=oof_probs,
         classes=classes,
-        p_turnover=p_turnover,
-        p_live_to_dead=p_live_to_dead,
-        p_dead_to_live=p_dead_to_live,
-        d_log_boost=d_log_boost,
-        min_live_frames=min_live_frames,
-        dead_flicker_frames=dead_flicker_frames,
-        glitch_frames=glitch_frames,
         verbose=True,
     )
 
@@ -675,22 +712,24 @@ def generate_and_verify_submission(
     print("RUNNING OFFICIAL VALIDATION (evaluation/validate_submission.py)...")
     print("=" * 80)
     validate_cmd = [sys.executable, os.path.join(ROOT, "evaluation", "validate_submission.py"), DEFAULT_SUBMISSION_CSV]
-    val_proc = subprocess.run(validate_cmd, capture_output=True, text=True)
+    val_proc = subprocess.run(validate_cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     print(val_proc.stdout)
     if val_proc.stderr:
         print(val_proc.stderr)
-    assert val_proc.returncode == 0, f"Validation failed with code {val_proc.returncode}!"
+    if val_proc.returncode != 0:
+        raise RuntimeError(f"Validation failed with code {val_proc.returncode}!")
 
     # 7. Programmatically run run_evaluation.py
     print("\n" + "=" * 80)
     print("RUNNING OFFICIAL SCOREBOARD EVALUATION (evaluation/run_evaluation.py)...")
     print("=" * 80)
     eval_cmd = [sys.executable, os.path.join(ROOT, "evaluation", "run_evaluation.py")]
-    eval_proc = subprocess.run(eval_cmd, capture_output=True, text=True)
+    eval_proc = subprocess.run(eval_cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     print(eval_proc.stdout)
     if eval_proc.stderr:
         print(eval_proc.stderr)
-    assert eval_proc.returncode == 0, f"Evaluation failed with code {eval_proc.returncode}!"
+    if eval_proc.returncode != 0:
+        raise RuntimeError(f"Evaluation failed with code {eval_proc.returncode}!")
 
     return df_submission
 

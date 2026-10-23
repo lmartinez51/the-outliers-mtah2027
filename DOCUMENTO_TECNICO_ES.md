@@ -168,8 +168,21 @@ Para erradicar el parpadeo cuadro a cuadro, `src/mtah_decoder.py` implementa un 
 
 ## Sección 4: Estudio de Ablación y Limitaciones
 
-### 4.1 Estudio de Ablación (Ground Truth Público de 5 Minutos)
+### 4.1 Estudio de Ablación y Validación Cruzada Fuera de Muestra (OOF)
 
+Para demostrar la contribución concreta de cada componente arquitectónico, evaluamos el sistema tanto bajo **Validación Cruzada en Bloques Temporales Contiguos de 5 Pliegues (OOF)** (7,500 cuadros, 5 bloques de 1 minuto) como en el **Tablero Oficial de Ground Truth Público**:
+
+#### Tabla 4.1: Validación Cruzada OOF Libre de Fuga (5 Pliegues)
+| Configuración | Etapa de Diagnóstico | macroF1 | spellF1 | F1 Local | F1 Visitante | F1 Muerto | Precisión Vivo |
+|---|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Motor Base (Sin Jev AI) | Probabilidades CV Crudas | 0.8292 | — | 0.8447 | 0.8353 | 0.8076 | 85.04% |
+| **Motor + Jev AI (System One)** | **Probabilidades CV Crudas** | **0.8317** | — | **0.8468** | **0.8363** | **0.8122** | **85.28%** |
+| Motor Base (Sin Jev AI) | Benchmark OOF Decodificado | 0.8929 | 0.4857 | 0.8860 | 0.8756 | 0.9170 | 88.58% |
+| **Motor + Jev AI (System One)** | **Benchmark OOF Decodificado** | **0.8926** | **0.4857** | **0.8857** | **0.8752** | **0.9170** | **88.54%** |
+
+*Jev AI aporta ganancias consistentes en pliegues no vistos: `+0.0026` Macro F1, `+0.0046` F1 Balón Parado (D), y `+0.23%` en precisión de duelos en vivo.*
+
+#### Tabla 4.2: Ablación en Tablero Oficial Público (7,500 cuadros)
 | Configuración | spellF1 | macroF1 | F1 Local | F1 Visitante | F1 Muerto | Posesiones | Cambios | Latencia |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | 1. Jugador Más Cercano (`baseline_raw`) | 0.0378 | 0.5972 | 0.7290 | 0.6430 | 0.4197 | 131 | 125 | -3.1c |

@@ -50,6 +50,24 @@ PUBLIC_SLICE = slice(PUBLIC_START_FRAME, PUBLIC_END_FRAME + 1)
 CLASSES = np.array(["H", "A", "D"])
 CACHE_PROBS_PATH = os.path.join(ROOT, "data", "cache_bar_ath_probs.npz")
 
+# GBDT Model Hyperparameters (Centralized Module Constants)
+HEAD1_GBDT_PARAMS: Dict[str, Any] = {
+    "max_depth": 3,
+    "max_iter": 80,
+    "learning_rate": 0.05,
+    "min_samples_leaf": 40,
+    "l2_regularization": 2.0,
+    "random_state": 42,
+}
+HEAD2_GBDT_PARAMS: Dict[str, Any] = {
+    "max_depth": 4,
+    "max_iter": 120,
+    "learning_rate": 0.05,
+    "min_samples_leaf": 45,
+    "l2_regularization": 2.5,
+    "random_state": 42,
+}
+
 
 # =============================================================================
 # 1. Feature Assembly for Head 1 & Head 2
@@ -58,7 +76,7 @@ CACHE_PROBS_PATH = os.path.join(ROOT, "data", "cache_bar_ath_probs.npz")
 def build_head1_features(ds: mf.FeatureDataset) -> Tuple[np.ndarray, List[str]]:
     """
     Construct Head 1 (Dead-Ball Detector) feature matrix.
-    
+
     Includes collective player speeds, relative speed slowdown ratios,
     player spread ratios, Smart Tagging tactical context, and ball occlusion
     features (clamped to prevent outlier sensitivity).
@@ -110,25 +128,49 @@ def build_head1_features(ds: mf.FeatureDataset) -> Tuple[np.ndarray, List[str]]:
     return X, cols
 
 
-def build_head2_features(ds: mf.FeatureDataset) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+def compute_multisecond_control_rollings(ds: mf.FeatureDataset) -> Dict[str, np.ndarray]:
     """
-    Construct Head 2 (Live Possession Estimator) feature matrices:
-      - X: original feature matrix
-      - X_swap: paired/antisymmetric feature matrix when swapping Home <-> Away.
-    
-    Incorporates multi-second rolling control windows (w125 = +/-2.5s, w200 = +/-4.0s)
-    and smoothed Smart-Tagging bias to generalize across unseen match minutes.
-    Overfitting spatial/count features (spread_x/y, n_players) are excluded.
+    Computes multi-second rolling control windows once over the full match:
+      - adv_w125: +/-2.5s window (251 frames)
+      - adv_w200: +/-4.0s window (401 frames)
+      - anchor_w125: +/-2.5s window (251 frames)
+      - anchor_w200: +/-4.0s window (401 frames)
+      - st_smooth: +/-1.25s window (125 frames)
     """
     s_adv = pd.Series(ds["nearest_team_adv"])
     s_anchor = pd.Series(ds["anchor_team"])
     s_st = pd.Series(ds["st_team_bias"])
 
-    adv_w125 = s_adv.rolling(window=251, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32)
-    adv_w200 = s_adv.rolling(window=401, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32)
-    anchor_w125 = s_anchor.rolling(window=251, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32)
-    anchor_w200 = s_anchor.rolling(window=401, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32)
-    st_smooth = s_st.rolling(window=125, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32)
+    return {
+        "adv_w125": s_adv.rolling(window=251, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32),
+        "adv_w200": s_adv.rolling(window=401, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32),
+        "anchor_w125": s_anchor.rolling(window=251, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32),
+        "anchor_w200": s_anchor.rolling(window=401, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32),
+        "st_smooth": s_st.rolling(window=125, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32),
+    }
+
+
+def build_head2_features(
+    ds: mf.FeatureDataset,
+    rollings: Optional[Dict[str, np.ndarray]] = None,
+) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+    """
+    Construct Head 2 (Live Possession Estimator) feature matrices:
+      - X: original feature matrix
+      - X_swap: paired/antisymmetric feature matrix when swapping Home <-> Away.
+
+    Incorporates multi-second rolling control windows (w125 = +/-2.5s, w200 = +/-4.0s)
+    and smoothed Smart-Tagging bias to generalize across unseen match minutes.
+    Overfitting spatial/count features (spread_x/y, n_players) are excluded.
+    """
+    if rollings is None:
+        rollings = compute_multisecond_control_rollings(ds)
+
+    adv_w125 = rollings["adv_w125"]
+    adv_w200 = rollings["adv_w200"]
+    anchor_w125 = rollings["anchor_w125"]
+    anchor_w200 = rollings["anchor_w200"]
+    st_smooth = rollings["st_smooth"]
 
     feature_pairs = [
         ("d_h1", "d_a1", "paired"),
@@ -199,6 +241,7 @@ def compute_live_prior(
     anchor_w125: Optional[np.ndarray] = None,
     anchor_w200: Optional[np.ndarray] = None,
     st_smooth: Optional[np.ndarray] = None,
+    rollings: Optional[Dict[str, np.ndarray]] = None,
 ) -> np.ndarray:
     """
     Smooth physics + multi-second rolling windows + Smart Tagging analytical prior:
@@ -206,6 +249,18 @@ def compute_live_prior(
     same_team_bridge, last_anchor_team, next_anchor_team, and smoothed st_team_bias
     to prevent false turnover spikes on unseen minutes.
     """
+    if rollings is not None:
+        if adv_w125 is None:
+            adv_w125 = rollings.get("adv_w125")
+        if adv_w200 is None:
+            adv_w200 = rollings.get("adv_w200")
+        if anchor_w125 is None:
+            anchor_w125 = rollings.get("anchor_w125")
+        if anchor_w200 is None:
+            anchor_w200 = rollings.get("anchor_w200")
+        if st_smooth is None:
+            st_smooth = rollings.get("st_smooth")
+
     if adv_w125 is None:
         s_adv = pd.Series(ds["nearest_team_adv"])
         adv_w125 = s_adv.rolling(window=251, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32)
@@ -272,17 +327,15 @@ def apply_ball_dropout(
 def compute_frames_until_set_piece(st_set_piece_active: np.ndarray) -> np.ndarray:
     """
     Computes lookahead distance in frames until the next tagged set-piece restart.
-    Vectorized backward pass.
+    Vectorized backward pass via binary search on set-piece event indices.
     """
     N = len(st_set_piece_active)
     frames_until_sp = np.full(N, 99999, dtype=np.int32)
-    next_sp = -1
-    for i in range(N - 1, -1, -1):
-        if st_set_piece_active[i] == 1.0:
-            next_sp = i
-            frames_until_sp[i] = 0
-        elif next_sp != -1:
-            frames_until_sp[i] = next_sp - i
+    sp_idx = np.where(st_set_piece_active == 1.0)[0]
+    if len(sp_idx) > 0:
+        insert_pts = np.searchsorted(sp_idx, np.arange(N))
+        valid = insert_pts < len(sp_idx)
+        frames_until_sp[valid] = sp_idx[insert_pts[valid]] - np.arange(N, dtype=np.int32)[valid]
     return frames_until_sp
 
 
@@ -293,6 +346,11 @@ def apply_dead_ball_rules(
     stoppage_speed_w75: float = 1.35,
     stoppage_speed_max: float = 2.80,
     stoppage_floor: float = 0.75,
+    occl_stoppage_floor: float = 0.75,
+    min_occl_gap: int = 120,
+    occl_mps_thresh: float = 1.68,
+    occl_w75_thresh: float = 2.50,
+    occl_max_s_thresh: float = 4.25,
 ) -> np.ndarray:
     """
     Deterministic domain rules for dead-ball detection:
@@ -301,8 +359,26 @@ def apply_dead_ball_rules(
       3. Collective physical stoppage: rolling_speed_w75 < 1.35 & max_speed < 2.8 -> P_dead >= 0.75
       4. Pre-set-piece occlusion & stoppage: within 100 frames (4.0s) before set-piece restart
          if ball is invisible or players are far & slow -> P_dead >= 0.85
+      5. Occlusion-stoppage: prolonged missing ball (gap >= 120) with calm player movement
+         (mean_speed < 1.68, rolling_w75 < 2.50, max_speed < 4.25) -> P_dead >= 0.75
     """
     p = p_dead.copy()
+
+    # Rule 5: Occlusion-stoppage detection (calm players during prolonged ball disappearance)
+    if occl_stoppage_floor > 0.0 and "ball_gap_len" in ds_slice:
+        bv = ds_slice["ball_valid"]
+        gap = ds_slice["ball_gap_len"]
+        mps = ds_slice["mean_player_speed"]
+        w75 = ds_slice["player_speed_rolling_w75"]
+        max_s = ds_slice["max_player_speed"]
+        occl_stop = (
+            (bv == 0)
+            & (gap >= min_occl_gap)
+            & (mps < occl_mps_thresh)
+            & (w75 < occl_w75_thresh)
+            & (max_s < occl_max_s_thresh)
+        )
+        p = np.where(occl_stop, np.maximum(p, occl_stoppage_floor), p)
 
     # Rule 4: Pre-set-piece occlusion & stoppage signal
     if frames_until_sp is not None:
@@ -347,10 +423,10 @@ def run_5fold_cv(
     """
     Executes 5-Fold Contiguous Temporal Block Cross-Validation on the 7,500 public frames.
     Blocks are 1,500 frames (~1 minute) each.
-    
+
     If p_h_prior_jev_full is provided, simultaneously computes both the Motor Base
     and Jev AI (System One) calibrated out-of-fold predictions.
-    
+
     Returns:
       - oof_probs_jev (or oof_probs_base if jev prior not provided)
       - metrics_jev (or metrics_base)
@@ -359,8 +435,9 @@ def run_5fold_cv(
     """
     pub_labels = gt_df[
         (gt_df["frame"] >= PUBLIC_START_FRAME) & (gt_df["frame"] <= PUBLIC_END_FRAME)
-    ]["label"].values
-    assert len(pub_labels) == PUBLIC_NUM_FRAMES, f"Expected {PUBLIC_NUM_FRAMES} public frames, got {len(pub_labels)}"
+    ]["label"].to_numpy()
+    if len(pub_labels) != PUBLIC_NUM_FRAMES:
+        raise ValueError(f"Expected {PUBLIC_NUM_FRAMES} public frames, got {len(pub_labels)}")
 
     X_h1_pub = X_h1_full[PUBLIC_SLICE]
     X_h2_pub = X_h2_full[PUBLIC_SLICE]
@@ -396,15 +473,7 @@ def run_5fold_cv(
         y_tr1 = y_dead_pub[train_idx]
         X_tr1_aug = apply_ball_dropout(X_tr1, y_tr1, head1_cols, drop_rate=0.35, seed=42 + fold)
 
-        clf1 = HistGradientBoostingClassifier(
-            max_depth=3,
-            max_iter=80,
-            learning_rate=0.05,
-            min_samples_leaf=40,
-            l2_regularization=2.0,
-            class_weight=None,
-            random_state=42,
-        )
+        clf1 = HistGradientBoostingClassifier(**HEAD1_GBDT_PARAMS)
         clf1.fit(X_tr1_aug, y_tr1)
         p_dead_val_raw = clf1.predict_proba(X_h1_pub[val_idx])[:, 1]
 
@@ -418,6 +487,7 @@ def run_5fold_cv(
             "d_h1": ds["d_h1"][v_sl],
             "d_a1": ds["d_a1"][v_sl],
             "mean_player_speed": ds["mean_player_speed"][v_sl],
+            "ball_gap_len": ds["ball_gap_len"][v_sl],
         }
         p_dead_val_base = apply_dead_ball_rules(p_dead_val_raw, ds_slice_dict, frames_until_sp=frames_until_sp[v_sl])
 
@@ -436,14 +506,7 @@ def run_5fold_cv(
         X_tr2_doubled = np.vstack([X_tr2, X_tr2_sw])
         y_tr2_doubled = np.concatenate([y_tr2, 1 - y_tr2])
 
-        clf2 = HistGradientBoostingClassifier(
-            max_depth=4,
-            max_iter=120,
-            learning_rate=0.05,
-            min_samples_leaf=45,
-            l2_regularization=2.5,
-            random_state=42,
-        )
+        clf2 = HistGradientBoostingClassifier(**HEAD2_GBDT_PARAMS)
         clf2.fit(X_tr2_doubled, y_tr2_doubled)
 
         # Symmetrized inference: 0.5 * (p_orig + (1.0 - p_swap))
@@ -451,7 +514,7 @@ def run_5fold_cv(
             clf2.predict_proba(X_h2_pub[val_idx])[:, 1]
             + (1.0 - clf2.predict_proba(X_h2_swap_pub[val_idx])[:, 1])
         )
-        
+
         # 1. Base combination: 0.72 GBDT + 0.28 base prior
         p_h_alive_raw = 0.72 * p_h_gbdt_val + 0.28 * p_h_prior_pub[val_idx]
         s_p_h = pd.Series(p_h_alive_raw)
@@ -560,10 +623,10 @@ def fit_full_model(
     """
     Fits Head 1 and Head 2 on all 7,500 public ground-truth frames and predicts
     calibrated 3-class probabilities across all 199,319 match frames.
-    
+
     If p_h_prior_jev_full is provided, computes both the Motor Base probabilities and
     the Jev AI (System One) calibrated probabilities, plus Shannon entropy and conflict masks.
-    
+
     Returns:
       (full_probs_jev, full_probs_base, jev_entropy_199319, jev_conflict_199319)
     """
@@ -571,7 +634,7 @@ def fit_full_model(
     n_frames = len(ds.graded_mask)
     pub_labels = gt_df[
         (gt_df["frame"] >= PUBLIC_START_FRAME) & (gt_df["frame"] <= PUBLIC_END_FRAME)
-    ]["label"].values
+    ]["label"].to_numpy()
 
     X_h1_pub = X_h1_full[PUBLIC_SLICE]
     X_h2_pub = X_h2_full[PUBLIC_SLICE]
@@ -585,15 +648,7 @@ def fit_full_model(
 
     # 1. Fit Head 1 with Ball-Dropout
     X_tr1_aug = apply_ball_dropout(X_h1_pub, y_dead_pub, head1_cols, drop_rate=0.35, seed=42)
-    clf1_full = HistGradientBoostingClassifier(
-        max_depth=3,
-        max_iter=80,
-        learning_rate=0.05,
-        min_samples_leaf=40,
-        l2_regularization=2.0,
-        class_weight=None,
-        random_state=42,
-    )
+    clf1_full = HistGradientBoostingClassifier(**HEAD1_GBDT_PARAMS)
     clf1_full.fit(X_tr1_aug, y_dead_pub)
     raw_p_dead_full = clf1_full.predict_proba(X_h1_full)[:, 1]
 
@@ -634,14 +689,7 @@ def fit_full_model(
     X_tr2_doubled = np.vstack([X_tr2_pub, X_tr2_swap_pub])
     y_tr2_doubled = np.concatenate([y_tr2_pub, 1 - y_tr2_pub])
 
-    clf2_full = HistGradientBoostingClassifier(
-        max_depth=4,
-        max_iter=120,
-        learning_rate=0.05,
-        min_samples_leaf=45,
-        l2_regularization=2.5,
-        random_state=42,
-    )
+    clf2_full = HistGradientBoostingClassifier(**HEAD2_GBDT_PARAMS)
     clf2_full.fit(X_tr2_doubled, y_tr2_doubled)
 
     # Symmetrized inference on full match
@@ -649,7 +697,7 @@ def fit_full_model(
         clf2_full.predict_proba(X_h2_full)[:, 1]
         + (1.0 - clf2_full.predict_proba(X_h2_swap_full)[:, 1])
     )
-    
+
     # 3. Base 3-state probabilities
     p_h_alive_raw = 0.72 * p_h_gbdt_full + 0.28 * p_h_prior_full
     s_p_h = pd.Series(p_h_alive_raw)
@@ -732,7 +780,7 @@ def load_probability_cache(
 ) -> Any:
     """
     Load cached probabilities from disk.
-    
+
     If return_dict is True, returns a dict with all available cached keys.
     Otherwise returns (oof_probs_7500, full_probs_199319, classes) for backwards compatibility.
     """
@@ -740,7 +788,7 @@ def load_probability_cache(
         path = CACHE_PROBS_PATH
     if not os.path.exists(path):
         raise FileNotFoundError(f"Probability cache not found at {path}. Run mtah_model.py first.")
-    
+
     data = np.load(path)
     if return_dict:
         return {k: data[k] for k in data.files}
@@ -760,22 +808,25 @@ def main():
     gt_path = os.path.join(ROOT, "evaluation", "gt", "BAR-ATH_possession_gt_public.csv")
     gt_df = pd.read_csv(gt_path)
 
-    # 2. Build feature matrices
+    # 2. Build feature matrices & compute multi-second control rollings (computed once)
+    print("Computing multi-second rolling control windows...")
+    rollings = compute_multisecond_control_rollings(ds)
+
     print("Building Head 1 and Head 2 feature matrices...")
     X_h1_full, head1_cols = build_head1_features(ds)
-    X_h2_full, X_h2_swap_full, h2_cols = build_head2_features(ds)
-    
-    # Base prior
-    p_h_prior_base = compute_live_prior(ds)
-    
+    X_h2_full, X_h2_swap_full, _ = build_head2_features(ds, rollings=rollings)
+
+    # Base prior (reuses precomputed rollings)
+    p_h_prior_base = compute_live_prior(ds, rollings=rollings)
+
     # Jev AI (System One): Resolve 36 N/A Smart Tagging phases & compute enhanced prior
     print("\n[Jev AI System One] Resolving N/A set pieces...")
     jev_na_prior, na_info = jev.resolve_na_set_pieces(ds)
     print(f"  Resolved {na_info['n_events_resolved']} / {na_info['n_events_total']} events ({na_info['n_frames_resolved']:,} frames)")
-    
+
     s_st_jev = pd.Series(ds["st_team_bias"] + jev_na_prior)
     st_smooth_jev = s_st_jev.rolling(window=125, center=True, min_periods=1).mean().fillna(0.0).to_numpy(dtype=np.float32)
-    p_h_prior_jev = compute_live_prior(ds, st_smooth=st_smooth_jev)
+    p_h_prior_jev = compute_live_prior(ds, rollings=rollings, st_smooth=st_smooth_jev)
 
     # 3. 5-Fold Contiguous Temporal Block Cross-Validation (Base vs Jev AI)
     oof_probs_jev, cv_metrics_jev, oof_probs_base, cv_metrics_base = run_5fold_cv(
@@ -815,18 +866,28 @@ def main():
         jev_conflict_199319=jev_conflict_199319,
     )
 
-    # 6. Assertions for acceptance
-    assert cv_metrics_jev["cv_time_sec"] < 15.0, f"CV took {cv_metrics_jev['cv_time_sec']:.2f}s, expected < 15s"
-    assert cv_metrics_jev["macro_f1"] >= cv_metrics_base["macro_f1"], (
-        f"Jev OOF Macro F1 {cv_metrics_jev['macro_f1']:.4f} must not regress Base ({cv_metrics_base['macro_f1']:.4f})"
-    )
-    assert cv_metrics_jev["macro_f1"] > 0.6207, f"OOF Macro F1 {cv_metrics_jev['macro_f1']:.4f} must beat baseline_smooth50 (0.6207)"
-    assert cv_metrics_jev["f1_d"] > 0.4197, f"OOF D F1 {cv_metrics_jev['f1_d']:.4f} must beat baseline_raw (0.4197)"
+    # 6. Validations for acceptance (ARCH-06)
+    if cv_metrics_jev["cv_time_sec"] >= 15.0:
+        raise RuntimeError(f"CV took {cv_metrics_jev['cv_time_sec']:.2f}s, expected < 15s")
+    if cv_metrics_jev["macro_f1"] < cv_metrics_base["macro_f1"]:
+        raise RuntimeError(
+            f"Jev OOF Macro F1 {cv_metrics_jev['macro_f1']:.4f} must not regress Base ({cv_metrics_base['macro_f1']:.4f})"
+        )
+    if cv_metrics_jev["macro_f1"] <= 0.6207:
+        raise RuntimeError(f"OOF Macro F1 {cv_metrics_jev['macro_f1']:.4f} must beat baseline_smooth50 (0.6207)")
+    if cv_metrics_jev["f1_d"] <= 0.4197:
+        raise RuntimeError(f"OOF D F1 {cv_metrics_jev['f1_d']:.4f} must beat baseline_raw (0.4197)")
+
+    if np.isnan(full_probs_jev).any():
+        raise RuntimeError("full_probs_jev contains NaN values!")
+    if not np.allclose(full_probs_jev.sum(axis=1), 1.0, atol=1e-4):
+        raise RuntimeError("full_probs_jev row sums do not equal 1.0!")
 
     graded = ds.graded_mask
     preds_grd = CLASSES[np.argmax(full_probs_jev[graded], axis=1)]
     d_share_pct = float(np.mean(preds_grd == "D") * 100)
-    assert 15.0 <= d_share_pct <= 28.0, f"Full-match D share {d_share_pct:.2f}% outside realistic 15%-28% range!"
+    if not (15.0 <= d_share_pct <= 28.0):
+        raise RuntimeError(f"Full-match D share {d_share_pct:.2f}% outside realistic 15%-28% range!")
 
     print(f"\nAll Model & Jev AI requirements verified successfully in {time.time() - t_global:.2f}s!")
 

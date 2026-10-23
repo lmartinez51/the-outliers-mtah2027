@@ -178,7 +178,7 @@ def step_evaluation() -> float:
     # 1. Official format validator
     val_script = os.path.join(ROOT, "evaluation", "validate_submission.py")
     val_cmd = [sys.executable, val_script, PATH_SUBMISSION_CSV]
-    val_res = subprocess.run(val_cmd, capture_output=True, text=True)
+    val_res = subprocess.run(val_cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     print(val_res.stdout)
     if val_res.returncode != 0:
         print(val_res.stderr)
@@ -187,7 +187,7 @@ def step_evaluation() -> float:
     # 2. Official competition evaluator
     eval_script = os.path.join(ROOT, "evaluation", "run_evaluation.py")
     eval_cmd = [sys.executable, eval_script]
-    eval_res = subprocess.run(eval_cmd, capture_output=True, text=True)
+    eval_res = subprocess.run(eval_cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     print(eval_res.stdout)
     if eval_res.returncode != 0:
         print(eval_res.stderr)
