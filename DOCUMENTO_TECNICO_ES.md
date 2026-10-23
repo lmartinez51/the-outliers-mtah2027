@@ -5,8 +5,8 @@
 **Autores:** Lorenzo Martínez, Ana Karen Arellano y Steven Ibarra  
 **Repositorio:** [`the-outliers-mtah2027`](https://github.com/lmartinez51/the-outliers-mtah2027)  
 **Partido Objetivo:** `BAR-ATH` (FC Barcelona vs. Athletic Club)  
-**Archivo Oficial de Entrega:** `The_Outliers.csv` / `submission.csv` (`MD5: 431b11967519ca33c7b46021c393f070`)  
-**Posición Oficial en Tabla:** **Rango #1** (`spellF1 = 0.8353`, `macroF1 = 0.8897`, `17` posesiones exactas, `+0.7` cuadros de latencia)  
+**Archivo Oficial de Entrega:** `The_Outliers.csv` / `submission.csv` (`MD5: 24d98e599e9f5a35cec7f24dc92b8740`)  
+**Posición Oficial en Tabla:** **Rango #1** (`spellF1 = 0.8353`, `macroF1 = 0.8896`, `17` posesiones exactas, `+0.4` cuadros de latencia)  
 
 ---
 
@@ -127,7 +127,7 @@ Tras córners, faltas o saques de puerta, las probabilidades de balón muerto su
 
 El reglamento exige reproducibilidad, transparencia y código abierto verificable:
 - **Cero Llamadas a APIs Externas:** `src/jev_system_one.py` opera de forma 100% local en NumPy/pandas, sin depender de servicios en la nube ni claves privadas.
-- **Reproducibilidad Bit a Bit:** La ejecución de `auto_process_competition.py` reproduce exactamente el archivo `submission.csv` con el hash MD5 `431b11967519ca33c7b46021c393f070`.
+- **Reproducibilidad Bit a Bit:** La ejecución de `auto_process_competition.py` reproduce exactamente el archivo `submission.csv` con el hash MD5 `24d98e599e9f5a35cec7f24dc92b8740`.
 - **Protección de Datos:** Los archivos de tracking y payloads derivados están excluidos del repositorio público mediante `.gitignore`.
 
 ---

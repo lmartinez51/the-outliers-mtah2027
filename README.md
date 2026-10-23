@@ -17,7 +17,7 @@ Official competition repository for **More than a Hack 2027 (Phase 1: Automated 
   - **Steven Ibarra**
 - **Repository:** [`the-outliers-mtah2027`](https://github.com/lmartinez51/the-outliers-mtah2027)
 - **Target Fixture:** `BAR-ATH` (FC Barcelona vs. Athletic Club, 199,319 video frames @ 25 fps)
-- **Primary Deliverable:** `The_Outliers.csv` (`MD5: 431b11967519ca33c7b46021c393f070`)
+- **Primary Deliverable:** `The_Outliers.csv` (`MD5: 24d98e599e9f5a35cec7f24dc92b8740`)
 
 ---
 
@@ -209,7 +209,7 @@ The_Outliers.csv  199319 rows  OK
 ```
 **Hexadecimal MD5 Checksum:**
 ```
-431b11967519ca33c7b46021c393f070
+24d98e599e9f5a35cec7f24dc92b8740
 ```
 
 ### 5.2 Official Leaderboard Ranking
@@ -220,7 +220,7 @@ python evaluation/run_evaluation.py
 ```
 rank  submission                macroF1  spellF1   poss     dur  transF1  lat_f  shareE  frag
 ----  ------------------------  -------  -------  -----  ------  -------  -----  ------  ----
-   1  The_Outliers               0.8897   0.8353     17    15.5   0.6500   +0.7   0.010  1.00
+   1  The_Outliers               0.8896   0.8353     17    15.5   0.6500   +0.4   0.009  1.00
 ```
 
 ---
@@ -255,7 +255,7 @@ python auto_process_competition.py --3d-slice public --3d-stride 1
 
 Per official rules in [SUBMISSION.md](SUBMISSION.md), all deliverables are organized in the repository and the `deliverables/` folder:
 
-- [x] **Deliverable 1 (Possession File):** `The_Outliers.csv` & `deliverables/The_Outliers.csv` (199,319 rows, MD5: `431b11967519ca33c7b46021c393f070`)
+- [x] **Deliverable 1 (Possession File):** `The_Outliers.csv` & `deliverables/The_Outliers.csv` (199,319 rows, MD5: `24d98e599e9f5a35cec7f24dc92b8740`)
 - [x] **Deliverable 2 (Public Code Repository):** Clean, self-contained repo with pinned `requirements.txt` and master orchestrator `auto_process_competition.py`
 - [x] **Deliverable 3 (Technical Document):** `The_Outliers.md`, `TECHNICAL_DOCUMENT.md`, and `DOCUMENTO_TECNICO_ES.md`
 - [x] **Zero Gated Data Leaks:** `.gitignore` strictly protects raw tracking, video, and cache files.

@@ -5,8 +5,8 @@
 **Authors:** Lorenzo Martínez, Ana Karen Arellano, and Steven Ibarra  
 **Repository:** [`the-outliers-mtah2027`](https://github.com/lmartinez51/the-outliers-mtah2027)  
 **Target Fixture:** `BAR-ATH` (FC Barcelona vs. Athletic Club)  
-**Official Output File:** `The_Outliers.csv` / `submission.csv` (`MD5: 431b11967519ca33c7b46021c393f070`)  
-**Official Scoreboard Rank:** **Rank #1** (`spellF1 = 0.8353`, `macroF1 = 0.8897`, `17` possessions, `+0.7` frame latency)  
+**Official Output File:** `The_Outliers.csv` / `submission.csv` (`MD5: 24d98e599e9f5a35cec7f24dc92b8740`)  
+**Official Scoreboard Rank:** **Rank #1** (`spellF1 = 0.8353`, `macroF1 = 0.8896`, `17` possessions, `+0.4` frame latency)  
 
 ---
 
@@ -130,7 +130,7 @@ Following a corner kick, free kick, or goal kick, dead-ball probabilities tend t
 
 `RULES.md` mandates that all submissions must be reproducible, open, inspectable, and algorithmic:
 - **Zero External API Calls:** `src/jev_system_one.py` contains **zero external network requests**, zero LLM inference APIs, and zero private credentials. It is a 100% self-contained, deterministic NumPy/pandas implementation.
-- **Bit-for-Bit Determinism:** Running `auto_process_competition.py` generates the exact submission file with identical MD5 checksum (`431b11967519ca33c7b46021c393f070`).
+- **Bit-for-Bit Determinism:** Running `auto_process_competition.py` generates the exact submission file with identical MD5 checksum (`24d98e599e9f5a35cec7f24dc92b8740`).
 - **Data Protection Compliance:** Raw tracking files (`data/tactical/`) and large derived coordinate exports (`src/match_payload.js`, `barca_3d_interactive_replay.html`, and `artifacts/`) are excluded from version control via `.gitignore`.
 
 ---

@@ -20,7 +20,7 @@ import os
 import sys
 import time
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -71,13 +71,98 @@ def team_of_each_track(meta_path: str) -> np.ndarray:
     return np.array([HOME if tid == home_id else AWAY for tid in slots], dtype=np.int8)
 
 
+def detect_half_kickoff_frame(
+    half_start: int,
+    half_end: int,
+    events: Optional[List[Dict[str, Any]]] = None,
+    ball_x_m: Optional[np.ndarray] = None,
+    ball_y_m: Optional[np.ndarray] = None,
+    ball_valid: Optional[np.ndarray] = None,
+    pitch_length: float = 105.0,
+    pitch_width: float = 68.0,
+    game: str = GAME,
+) -> int:
+    """
+    Algorithmic, generalizable detection of the actual kickoff frame for a match half.
+    Eliminates hardcoded kickoff frame constants:
+      1. Inspects Smart Tagging events for the kickoff event ('SET PIECES' with
+         Type 'Kick Off (Start)') or first live play phase in [half_start, half_start + 7500].
+         If the half start is already inside the kickoff event window (like Half 1 at 11185),
+         kickoff is immediate at half_start.
+         If kickoff occurs later (like Half 2), checks starter.load_smart_tagging.KICKOFF_VIDEO_FRAMES
+         or detects when the ball is kicked from the center spot.
+      2. Fallback if Smart Tagging is unavailable: detects when the ball is stationary within
+         2.5m of the center spot (pitch_length/2, pitch_width/2) followed by sustained
+         movement > 4.0m.
+    """
+    if events is None:
+        try:
+            import starter.load_smart_tagging as lst
+            events = lst.load(game)
+        except Exception:
+            events = None
+
+    if events is not None:
+        kickoff_event = None
+        for ev in events:
+            code = (ev.get("code") or "").strip().upper()
+            etype = (ev.get("tags", {}).get("Type") or "").strip().lower()
+            if code == "SET PIECES" and "kick off" in etype:
+                if half_start - 1000 <= ev["start_frame"] <= half_start + 7500:
+                    kickoff_event = ev
+                    break
+
+        if kickoff_event is not None:
+            if kickoff_event["start_frame"] <= half_start <= kickoff_event["end_frame"]:
+                return half_start
+
+            try:
+                import starter.load_smart_tagging as lst
+                ko_dict = getattr(lst, "KICKOFF_VIDEO_FRAMES", {})
+                for _, ko_f in ko_dict.items():
+                    if kickoff_event["start_frame"] <= ko_f <= kickoff_event["end_frame"]:
+                        return ko_f
+            except Exception:
+                pass
+
+            if ball_x_m is not None and ball_y_m is not None:
+                cx, cy = pitch_length / 2.0, pitch_width / 2.0
+                s_fr, e_fr = max(half_start, kickoff_event["start_frame"]), min(half_end, kickoff_event["end_frame"])
+                for f in range(s_fr, e_fr - 10):
+                    if not np.isnan(ball_x_m[f]) and not np.isnan(ball_y_m[f]):
+                        dist_c = np.hypot(ball_x_m[f] - cx, ball_y_m[f] - cy)
+                        if dist_c <= 3.5:
+                            if not np.isnan(ball_x_m[f+10]) and not np.isnan(ball_y_m[f+10]):
+                                dm = np.hypot(ball_x_m[f+10] - ball_x_m[f], ball_y_m[f+10] - ball_y_m[f])
+                                if dm > 2.0:
+                                    return f
+
+            return kickoff_event["start_frame"]
+
+    if ball_x_m is not None and ball_y_m is not None:
+        cx, cy = pitch_length / 2.0, pitch_width / 2.0
+        scan_end = min(half_end - 50, half_start + 7500)
+        for f in range(half_start + 25, scan_end):
+            if ball_valid is not None and ball_valid[f] == 0:
+                continue
+            if not np.isnan(ball_x_m[f]) and not np.isnan(ball_y_m[f]):
+                dist_c = np.hypot(ball_x_m[f] - cx, ball_y_m[f] - cy)
+                if dist_c < 2.5:
+                    if not np.isnan(ball_x_m[f+50]) and not np.isnan(ball_y_m[f+50]):
+                        disp = np.hypot(ball_x_m[f+50] - ball_x_m[f], ball_y_m[f+50] - ball_y_m[f])
+                        if disp > 4.0:
+                            return f
+
+    return half_start
+
+
 def build_masks(game: str = GAME) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Build graded_mask, play_live_window_mask, and is_pre_2nd_half_kickoff.
+    """Build graded_mask, play_live_window_mask, and is_pre_2nd_half_kickoff algorithmically.
 
     Returns:
         graded_mask: bool array (199319,) True inside halves (11185..90651 and 110808..190197)
-        play_live_window_mask: bool array (199319,) True in live play (11185..90651 and 113742..190197)
-        is_pre_2nd_half_kickoff: float32 array (199319,) 1.0 in 110808..113741, 0.0 elsewhere
+        play_live_window_mask: bool array (199319,) True in live play
+        is_pre_2nd_half_kickoff: float32 array (199319,) 1.0 in pre-kickoff dead-ball interval, 0.0 elsewhere
     """
     n_frames = source_frames("tactical", game)
     graded_mask = np.zeros(n_frames, dtype=bool)
@@ -85,16 +170,23 @@ def build_masks(game: str = GAME) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     is_pre_2nd_half_kickoff = np.zeros(n_frames, dtype=np.float32)
 
     blocks = half_video_blocks(game)
+    pitch_len, pitch_wid = GAMES[game]["pitch"]
+
     for half, first, last in blocks:
         graded_mask[first : last + 1] = True
-
-    # Half 1: 11185..90651
-    play_live_window_mask[11185 : 90651 + 1] = True
-    # Half 2: from actual kickoff at 113742 to 190197
-    play_live_window_mask[113742 : 190197 + 1] = True
-
-    # Pre 2nd half kickoff: 110808..113741 (where players walk into place, guaranteed dead ball D)
-    is_pre_2nd_half_kickoff[110808:113742] = 1.0
+        actual_kickoff = detect_half_kickoff_frame(
+            half_start=first,
+            half_end=last,
+            pitch_length=pitch_len,
+            pitch_width=pitch_wid,
+            game=game,
+        )
+        if actual_kickoff > first:
+            # Pre-kickoff dead-ball period (players walking into place before whistle)
+            is_pre_2nd_half_kickoff[first:actual_kickoff] = 1.0
+            play_live_window_mask[actual_kickoff : last + 1] = True
+        else:
+            play_live_window_mask[first : last + 1] = True
 
     return graded_mask, play_live_window_mask, is_pre_2nd_half_kickoff
 

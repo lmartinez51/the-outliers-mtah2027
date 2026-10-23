@@ -301,7 +301,7 @@ def sharpen_restart_boundaries(
 ) -> np.ndarray:
     """
     Refines p_dead around the exact set-piece restart kick:
-    When inside an active set piece (phase >= 0.55), the ball is visible and moving on the pitch
+    When inside an active set piece (phase >= 0.85), the ball is visible and moving on the pitch
     (ball_speed_rolling_w15 > 5.5 or ball_speed > 2.0 with player_speed > 4.2), the restart kick
     has physically taken place. Damps lingering false P(D) spikes from lagging tag boundaries
     so the new live possession starts on time.

@@ -52,6 +52,7 @@ if ROOT not in sys.path:
 
 import evaluation.possession_metrics as pm
 import games
+import src.jev_system_one as jev
 import src.mtah_features as mf
 import src.mtah_model as mm
 
@@ -139,7 +140,7 @@ def enforce_controlled_possession(
     min_live_frames: int = 22,       # 0.88s: brief non-controlled touch/deflection
     dead_flicker_frames: int = 30,   # 1.20s: brief live flicker inside stoppage
     glitch_frames: int = 8,          # 0.32s: micro-glitch adjacent to D
-    max_passes: int = 12,
+    max_passes: int = 5000,
     max_sandwiched_frames: int = 115,
     sandwiched_conf_thresh: float = 0.0,
     bridge_stoppage_frames: int = 10,
@@ -554,38 +555,64 @@ def run_ablation_comparison(
     bridge_graded = int(np.sum(bridge_mask & graded_mask))
     bridge_total = int(np.sum(bridge_mask))
 
+    _, na_info = jev.resolve_na_set_pieces(ds)
+    na_ev_resolved = na_info["n_events_resolved"]
+    na_fr_resolved = na_info["n_frames_resolved"]
+    h_cnt = na_info["resolved_counts"]["H"]
+    a_cnt = na_info["resolved_counts"]["A"]
+
     # Print beautiful side-by-side ablation table
     print("\n" + "=" * 106)
     print("      RIGOROUS SIDE-BY-SIDE ABLATION BENCHMARK: MOTOR BASE vs. MOTOR + JEV AI (`SYSTEM ONE`)")
     print("=" * 106)
     print(f"{'Evaluation Metric':<43} | {'Motor Base (No Jev)':<21} | {'Motor + Jev AI (Sys 1)':<23} | {'Delta / Lift'}")
     print("-" * 106)
-    print("1. LEAK-FREE 5-FOLD OOF CV (7,500 frames, 5x1min temporal blocks):")
+    print("1. OUT-OF-FOLD 5-FOLD BLOCK CV (7,500 frames, 5x1min blocks):")
     d_f1 = res_oof_jev['macro_f1'] - res_oof_base['macro_f1']
+    d_spell_oof = res_oof_jev['spell_f1_mean'] - res_oof_base['spell_f1_mean']
+    d_h_oof = res_oof_jev['per_class']['H']['f1'] - res_oof_base['per_class']['H']['f1']
+    d_a_oof = res_oof_jev['per_class']['A']['f1'] - res_oof_base['per_class']['A']['f1']
+    d_d_oof = res_oof_jev['per_class']['D']['f1'] - res_oof_base['per_class']['D']['f1']
+    d_acc_oof = (res_oof_jev['team_acc_gt_alive'] - res_oof_base['team_acc_gt_alive']) * 100
+    d_ent = ent_jev - ent_base
+
     print(f"   macroF1                                  | {res_oof_base['macro_f1']:<21.4f} | {res_oof_jev['macro_f1']:<23.4f} | {d_f1:+.4f} ({(d_f1/res_oof_base['macro_f1'])*100:+.2f}%)")
-    print(f"   spellF1                                  | {res_oof_base['spell_f1_mean']:<21.4f} | {res_oof_jev['spell_f1_mean']:<23.4f} | {res_oof_jev['spell_f1_mean'] - res_oof_base['spell_f1_mean']:+.4f} (Exact)")
-    print(f"   Home Possession (H) F1                   | {res_oof_base['per_class']['H']['f1']:<21.4f} | {res_oof_jev['per_class']['H']['f1']:<23.4f} | {res_oof_jev['per_class']['H']['f1'] - res_oof_base['per_class']['H']['f1']:+.4f}")
-    print(f"   Away Possession (A) F1                   | {res_oof_base['per_class']['A']['f1']:<21.4f} | {res_oof_jev['per_class']['A']['f1']:<23.4f} | {res_oof_jev['per_class']['A']['f1'] - res_oof_base['per_class']['A']['f1']:+.4f} (Lift)")
-    print(f"   Dead Ball (D) F1                         | {res_oof_base['per_class']['D']['f1']:<21.4f} | {res_oof_jev['per_class']['D']['f1']:<23.4f} | {res_oof_jev['per_class']['D']['f1'] - res_oof_base['per_class']['D']['f1']:+.4f} (Lift)")
-    print(f"   Live H/A Accuracy                        | {res_oof_base['team_acc_gt_alive']*100:<20.2f}% | {res_oof_jev['team_acc_gt_alive']*100:<22.2f}% | {(res_oof_jev['team_acc_gt_alive'] - res_oof_base['team_acc_gt_alive'])*100:+.2f}%")
-    print(f"   Mean Epistemic Shannon Entropy           | {ent_base:<21.4f} | {ent_jev:<23.4f} | {ent_jev - ent_base:+.4f} (Calibrated)")
+    print(f"   spellF1                                  | {res_oof_base['spell_f1_mean']:<21.4f} | {res_oof_jev['spell_f1_mean']:<23.4f} | {d_spell_oof:+.4f}")
+    print(f"   Home Possession (H) F1                   | {res_oof_base['per_class']['H']['f1']:<21.4f} | {res_oof_jev['per_class']['H']['f1']:<23.4f} | {d_h_oof:+.4f}")
+    print(f"   Away Possession (A) F1                   | {res_oof_base['per_class']['A']['f1']:<21.4f} | {res_oof_jev['per_class']['A']['f1']:<23.4f} | {d_a_oof:+.4f}")
+    print(f"   Dead Ball (D) F1                         | {res_oof_base['per_class']['D']['f1']:<21.4f} | {res_oof_jev['per_class']['D']['f1']:<23.4f} | {d_d_oof:+.4f}")
+    print(f"   Live H/A Accuracy                        | {res_oof_base['team_acc_gt_alive']*100:<20.2f}% | {res_oof_jev['team_acc_gt_alive']*100:<22.2f}% | {d_acc_oof:+.2f}%")
+    print(f"   Mean Epistemic Shannon Entropy           | {ent_base:<21.4f} | {ent_jev:<23.4f} | {d_ent:+.4f}")
     print("-" * 106)
-    print("2. OFFICIAL PUBLIC SCOREBOARD (5-minute GT, frames 11185..18684):")
-    print(f"   spellF1 (Competition Ranking Metric)     | {eval_pub_base['spell_f1_mean']:<21.4f} | {eval_pub_jev['spell_f1_mean']:<23.4f} | {eval_pub_jev['spell_f1_mean'] - eval_pub_base['spell_f1_mean']:+.4f} (Top-1 Rank)")
-    print(f"   macroF1                                  | {eval_pub_base['macro_f1']:<21.4f} | {eval_pub_jev['macro_f1']:<23.4f} | {eval_pub_jev['macro_f1'] - eval_pub_base['macro_f1']:+.4f} (Lift)")
-    print(f"   Class D F1                               | {eval_pub_base['per_class']['D']['f1']:<21.4f} | {eval_pub_jev['per_class']['D']['f1']:<23.4f} | {eval_pub_jev['per_class']['D']['f1'] - eval_pub_base['per_class']['D']['f1']:+.4f} (Preserved)")
-    print(f"   transF1 (tau = 25 frames / 1.0s)         | {eval_pub_base['transitions'][25]['f1']:<21.4f} | {eval_pub_jev['transitions'][25]['f1']:<23.4f} | {eval_pub_jev['transitions'][25]['f1'] - eval_pub_base['transitions'][25]['f1']:+.4f} (Preserved)")
-    print(f"   Transition Latency (lat_f)               | {eval_pub_base['transitions'][25]['mean_latency']:<+20.2f}f | {eval_pub_jev['transitions'][25]['mean_latency']:<+22.2f}f | {eval_pub_jev['transitions'][25]['mean_latency'] - eval_pub_base['transitions'][25]['mean_latency']:+.2f} frames")
-    print(f"   Possession Share Error (shareE)          | {eval_pub_base['share_err']:<21.4f} | {eval_pub_jev['share_err']:<23.4f} | {eval_pub_jev['share_err'] - eval_pub_base['share_err']:+.4f} (Better)")
-    print(f"   Possession Count (GT = 17 spells)        | {eval_pub_base['n_pred_spells']:<21} | {eval_pub_jev['n_pred_spells']:<23} | Exact Match")
-    print(f"   Mean Possession Duration (GT = 14.2s)    | {eval_pub_base['mean_spell_duration_s']:<20.1f}s | {eval_pub_jev['mean_spell_duration_s']:<22.1f}s | Exact Match")
+    print("2. PUBLIC 5-MIN BENCHMARK (In-Sample Full Fit vs. Baselines):")
+    d_spell_pub = eval_pub_jev['spell_f1_mean'] - eval_pub_base['spell_f1_mean']
+    d_macro_pub = eval_pub_jev['macro_f1'] - eval_pub_base['macro_f1']
+    d_d_pub = eval_pub_jev['per_class']['D']['f1'] - eval_pub_base['per_class']['D']['f1']
+    d_trans_pub = eval_pub_jev['transitions'][25]['f1'] - eval_pub_base['transitions'][25]['f1']
+    d_lat_pub = eval_pub_jev['transitions'][25]['mean_latency'] - eval_pub_base['transitions'][25]['mean_latency']
+    d_share_pub = eval_pub_jev['share_err'] - eval_pub_base['share_err']
+    d_nsp_pub = eval_pub_jev['n_pred_spells'] - eval_pub_base['n_pred_spells']
+    gt_nsp = eval_pub_jev['n_gt_spells']
+    d_dur_pub = eval_pub_jev['mean_spell_duration_s'] - eval_pub_base['mean_spell_duration_s']
+    gt_dur = eval_pub_jev['gt_mean_spell_duration_s']
+
+    print(f"   spellF1 (Competition Ranking Metric)     | {eval_pub_base['spell_f1_mean']:<21.4f} | {eval_pub_jev['spell_f1_mean']:<23.4f} | {d_spell_pub:+.4f}")
+    print(f"   macroF1                                  | {eval_pub_base['macro_f1']:<21.4f} | {eval_pub_jev['macro_f1']:<23.4f} | {d_macro_pub:+.4f}")
+    print(f"   Class D F1                               | {eval_pub_base['per_class']['D']['f1']:<21.4f} | {eval_pub_jev['per_class']['D']['f1']:<23.4f} | {d_d_pub:+.4f}")
+    print(f"   transF1 (tau = 25 frames / 1.0s)         | {eval_pub_base['transitions'][25]['f1']:<21.4f} | {eval_pub_jev['transitions'][25]['f1']:<23.4f} | {d_trans_pub:+.4f}")
+    print(f"   Transition Latency (lat_f)               | {eval_pub_base['transitions'][25]['mean_latency']:<+20.2f}f | {eval_pub_jev['transitions'][25]['mean_latency']:<+22.2f}f | {d_lat_pub:+.2f} frames")
+    print(f"   Possession Share Error (shareE)          | {eval_pub_base['share_err']:<21.4f} | {eval_pub_jev['share_err']:<23.4f} | {d_share_pub:+.4f}")
+    print(f"   Possession Count (GT = {gt_nsp} spells)        | {eval_pub_base['n_pred_spells']:<21} | {eval_pub_jev['n_pred_spells']:<23} | {d_nsp_pub:+d} vs Base ({eval_pub_jev['n_pred_spells'] - gt_nsp:+d} vs GT)")
+    print(f"   Mean Possession Duration (GT = {gt_dur:.1f}s)    | {eval_pub_base['mean_spell_duration_s']:<20.1f}s | {eval_pub_jev['mean_spell_duration_s']:<22.1f}s | {d_dur_pub:+.1f}s vs Base")
     print("-" * 106)
     print("3. FULL-MATCH GRADED DIAGNOSTICS (158,857 graded frames):")
-    print(f"   N/A Set Pieces Resolved                  | {'0 (Tactical Lag)':<21} | {'36 events (26 Throw-Ins)':<23} | +26,500 frames resolved")
+    d_sp_full = len(sp_jev) - len(sp_base)
+    d_dur_full = np.mean(dur_jev) - np.mean(dur_base)
+    print(f"   N/A Set Pieces Resolved                  | {'0 (Tactical Lag)':<21} | {f'{na_ev_resolved} events ({h_cnt}H / {a_cnt}A)':<23} | {na_fr_resolved:+,} frames resolved")
     print(f"   Tag-vs-Physics Conflict Frames Arbitrated| {'0 (Lagging Tags)':<21} | {f'{conflict_graded:,} graded ({conflict_total:,} match)':<23} | Real-time turnovers")
     print(f"   Occluded Pass-Bridge Frames Stabilized   | {'0 (Vulnerable to dips)':<21} | {f'{bridge_graded:,} graded ({bridge_total:,} match)':<23} | Stabilized possession")
-    print(f"   Full-Match Possession Spells Count       | {len(sp_base):<21} | {len(sp_jev):<23} | -{len(sp_base) - len(sp_jev)} false fragments")
-    print(f"   Full-Match Mean Duration                 | {np.mean(dur_base):<20.1f}s | {np.mean(dur_jev):<22.1f}s | +{np.mean(dur_jev) - np.mean(dur_base):.2f}s stability")
+    print(f"   Full-Match Possession Spells Count       | {len(sp_base):<21} | {len(sp_jev):<23} | {d_sp_full:+d} spells")
+    print(f"   Full-Match Mean Duration                 | {np.mean(dur_base):<20.1f}s | {np.mean(dur_jev):<22.1f}s | {d_dur_full:+.2f}s stability")
     print("=" * 106)
     print(f"Ablation benchmark completed in {time.time() - t0:.2f}s.\n")
 
@@ -689,16 +716,14 @@ def generate_and_verify_submission(
         verbose=True,
     )
 
-    # Clean up any non-baseline / non-The_Outliers CSVs in results directory
-    results_dir = os.path.join(ROOT, "evaluation", "results")
-    for csv_file in glob.glob(os.path.join(results_dir, "*.csv")):
-        fname = os.path.basename(csv_file)
-        if not fname.startswith("baseline_") and fname not in ("The_Outliers.csv", "The Outliers.csv"):
-            try:
-                os.remove(csv_file)
-                print(f"Cleaned temporary/legacy result file: {fname}")
-            except OSError:
-                pass
+    # Clean up legacy result file if it exists
+    legacy_file = os.path.join(ROOT, "evaluation", "results", "team_submission.csv")
+    if os.path.exists(legacy_file):
+        try:
+            os.remove(legacy_file)
+            print("Cleaned legacy file: team_submission.csv")
+        except OSError:
+            pass
 
     # 5. Save CSVs
     for out_path in output_csvs:
