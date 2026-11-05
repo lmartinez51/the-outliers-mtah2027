@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Competition-More_Than_A_Hack_2027-004D98?style=for-the-badge&logo=fcbarcelona&logoColor=EDBB00" alt="Competition"/>
   <img src="https://img.shields.io/badge/Rank-Rank_%231_on_Leaderboard-EDBB00?style=for-the-badge&logo=trophy&logoColor=black" alt="Leaderboard Rank"/>
   <img src="https://img.shields.io/badge/spellF1-0.8353_(%2B96.9%25)-A50044?style=for-the-badge" alt="spellF1 Score"/>
-  <img src="https://img.shields.io/badge/macroF1-0.8897-00E5FF?style=for-the-badge&logoColor=black" alt="macroF1 Score"/>
+  <img src="https://img.shields.io/badge/macroF1-0.8896-00E5FF?style=for-the-badge&logoColor=black" alt="macroF1 Score"/>
 </p>
 
 Official competition repository for **More than a Hack 2027 (Phase 1: Automated Ball Possession Tracking)**, organised by **[FC Barcelona](https://www.fcbarcelona.com)**, **[Metrica Sports](https://metrica-sports.com)**, and **[Mobile World Capital Barcelona](https://www.mwcbarcelona.com)** at the Talent Arena.
@@ -60,7 +60,7 @@ spellF1 = mean possession-spell F1 over IoU 0.3/0.4/0.5/0.6/0.7; transF1/lat_f a
 
 rank  submission                macroF1  spellF1   poss     dur  transF1  lat_f  shareE  frag
 ----  ------------------------  -------  -------  -----  ------  -------  -----  ------  ----
-   1  The_Outliers               0.8897   0.8353     17    15.5   0.6500   +0.7   0.010  1.00
+   1  The_Outliers               0.8896   0.8353     17    15.5   0.6500   +0.4   0.009  1.00
    2  baseline_smooth125         0.5812   0.4242     16    18.5   0.1667   -7.7   0.052  0.81
    3  baseline_smooth50          0.6207   0.3256     26    10.8   0.0816   +4.0   0.048  1.43
    4  baseline_smooth25          0.6200   0.2868     36     7.6   0.2034   +8.2   0.056  1.90
@@ -69,8 +69,8 @@ rank  submission                macroF1  spellF1   poss     dur  transF1  lat_f 
 
 ### Performance Highlights
 - **Rank #1 Globally:** `spellF1 = 0.8353` vs. `0.4242` nearest baseline (**+96.9% relative gain**).
-- **Exact Possession Count:** **17 / 17** possessions detected (mean duration **14.2s**, matching ground truth exactly).
-- **Near-Zero Latency:** **+0.7 frames** (28 ms delay at 25 fps).
+- **Exact Possession Count:** **17 / 17** possessions detected (mean duration **15.5s** vs. **14.2s** ground truth).
+- **Near-Zero Latency:** **+0.4 frames** (~16 ms delay at 25 fps).
 - **Zero Abstentions:** **0 frames of X** on graded territory.
 
 ### 2.1 Out-of-Fold (OOF) 5-Fold Cross-Validation & Ablation Benchmark
@@ -80,12 +80,12 @@ To guarantee zero-leakage generalizability across unseen match periods, we evalu
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|
 | **5-Fold OOF CV (Raw Probabilities)** | Motor Base (No Jev AI) | 0.8292 | — | 0.8447 | 0.8353 | 0.8076 | 85.04% |
 | **5-Fold OOF CV (Raw Probabilities)** | **Motor + Jev AI (System One)** | **0.8317** | — | **0.8468** | **0.8363** | **0.8122** | **85.28%** |
-| **5-Fold OOF CV (Decoded Benchmark)** | Motor Base (No Jev AI) | 0.8929 | 0.4857 | 0.8860 | 0.8756 | 0.9170 | 88.58% |
-| **5-Fold OOF CV (Decoded Benchmark)** | **Motor + Jev AI (System One)** | **0.8926** | **0.4857** | **0.8857** | **0.8752** | **0.9170** | **88.54%** |
-| **Official Public Scoreboard (Full)** | Motor Base (No Jev AI) | 0.8896 | 0.8353 | 0.9357 | 0.9613 | 0.7721 | 98.91% |
-| **Official Public Scoreboard (Full)** | **Motor + Jev AI (Final Submission)**| **0.8897** | **0.8353** | **0.9357** | **0.9613** | **0.7721** | **98.91%** |
+| **5-Fold OOF CV (Decoded Benchmark)** | Motor Base (No Jev AI) | 0.8948 | 0.4857 | 0.8881 | 0.8793 | 0.9170 | 88.86% |
+| **5-Fold OOF CV (Decoded Benchmark)** | **Motor + Jev AI (System One)** | **0.8946** | **0.4857** | **0.8878** | **0.8790** | **0.9170** | **88.82%** |
+| **Official Public Scoreboard (Full)** | Motor Base (No Jev AI) | 0.8895 | 0.8353 | 0.9357 | 0.9606 | 0.7721 | 98.89% |
+| **Official Public Scoreboard (Full)** | **Motor + Jev AI (Final Submission)**| **0.8896** | **0.8353** | **0.9357** | **0.9609** | **0.7721** | **98.89%** |
 
-*Jev AI delivers statistically verified net gains across unseen folds (`+0.0026` Macro F1, `+0.0046` Dead-Ball D F1, `+0.23%` live duel accuracy) while arbitrating 3,760 tag-vs-physics conflict frames and resolving all 36 N/A set-piece restarts across the full 90-minute match.*
+*Jev AI delivers statistically verified net gains across unseen raw probability folds (`+0.0026` Macro F1, `+0.0046` Dead-Ball D F1, `+0.24%` live duel accuracy) while arbitrating 3,760 graded tag-vs-physics conflict frames and resolving all 36 N/A set-piece restarts (26,500 frames) across the full 90-minute match.*
 
 ---
 
@@ -105,7 +105,7 @@ To guarantee zero-leakage generalizability across unseen match periods, we evalu
         | HEAD 1: Dead-Ball Detector (GBDT) |             | HEAD 2: Live Possession Estimator |
         | P(Dead)                           |             | P(Home | Live)                    |
         | - 35% Ball-Dropout Augmentation   |             | - Strict Team-Swap Symmetry       |
-        | - Speed slowdown ratios (w15/w75) |             | - 0.75 GBDT + 0.25 Smooth Prior   |
+        | - Speed slowdown ratios (w15/w75) |             | - 0.72 GBDT + 0.28 Smooth Prior   |
         | - Boundary & stoppage overrides   |             | - Immune to team color/slot bias  |
         +-----------------------------------+             +-----------------------------------+
                          |                                                 |
@@ -131,7 +131,7 @@ To guarantee zero-leakage generalizability across unseen match periods, we evalu
                                                   v
                    +-------------------------------------------------------------+
                    | OFFICIAL DELIVERABLES:                                      |
-                   | 1. submission.csv / The_Outliers.csv (MD5: 431b11967519...) |
+                   | 1. submission.csv / The_Outliers.csv (MD5: 24d98e599e9f...) |
                    | 2. evaluation/results/The_Outliers.csv (Rank #1 Leaderboard)|
                    | 3. deliverables/The_Outliers.csv & deliverables/The_Outliers.md
                    | 4. barca_3d_interactive_replay.html (3D Tactical Replay)   |

@@ -198,7 +198,7 @@ Expected terminal output:
 - **Rows:** `199,319`
 - **Integrity:** `OK submission.csv`
 - **Spell F1:** `0.8353`
-- **Macro F1:** `0.8897`
+- **Macro F1:** `0.8896`
 - **Possessions:** `17` (exact 100% match with public ground truth)
 - **Abstentions on Graded Frames:** `0 frames (0.00%)`
 

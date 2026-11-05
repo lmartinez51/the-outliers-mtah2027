@@ -24,14 +24,14 @@ Para resolver estos desafíos, desarrollamos una **Arquitectura Probabilística 
 
 | Modelo / Pipeline | Rango | spellF1 (Oficial) | macroF1 | F1 Balón Muerto (D) | Posesiones (GT=17) | Latencia ($\Delta$ cuadros) | Parpadeos Evitados |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Nuestra IA + Jev AI (`System One`)** | **#1** | **0.8353** | **0.8897** | **0.7721** | **17 (Exacto)** | **+0.7** | **113 evitados (90.4%)** |
-| Motor Base (Sin Jev AI) | #2 | 0.8353 | 0.8896 | 0.7721 | 17 (Exacto) | +0.7 | 113 evitados (90.4%) |
+| **Nuestra IA + Jev AI (`System One`)** | **#1** | **0.8353** | **0.8896** | **0.7721** | **17 (Exacto)** | **+0.4** | **113 evitados (90.4%)** |
+| Motor Base (Sin Jev AI) | #2 | 0.8353 | 0.8895 | 0.7721 | 17 (Exacto) | +0.3 | 113 evitados (90.4%) |
 | `baseline_smooth125` | #3 | 0.4242 | 0.5812 | 0.1464 | 16 (-1) | -7.7 | — |
 | `baseline_smooth50` | #4 | 0.3256 | 0.6207 | 0.3225 | 26 (+9) | +4.0 | — |
 | `baseline_smooth25` | #5 | 0.2868 | 0.6200 | 0.3857 | 36 (+19) | +8.2 | — |
 | `baseline_raw` (Más Cercano) | #6 | 0.0378 | 0.5972 | 0.4197 | 131 (+114) | -3.1 | Línea base (125 cambios) |
 
-*Nuestro pipeline supera a la mejor línea base con una **mejora relativa del +96.9%** en `spellF1` ($0.8353$ frente a $0.4242$), logrando latencia casi nula ($+0.7$ cuadros / $28\text{ ms}$) y coincidencia exacta en el número de posesiones ($17/17$).*
+*Nuestro pipeline supera a la mejor línea base con una **mejora relativa del +96.9%** en `spellF1` ($0.8353$ frente a $0.4242$), logrando latencia casi nula ($+0.4$ cuadros / $\sim 16\text{ ms}$) y coincidencia exacta en el número de posesiones ($17/17$).*
 
 ---
 
@@ -53,7 +53,7 @@ Nuestro método desacopla el problema en componentes cinemáticos, tácticos y t
         | CABEZA 1: Detector Balón Muerto   |             | CABEZA 2: Posesión Viva Simétrica |
         | P(Balón Muerto / D)               |             | P(Local | Juego Vivo)             |
         | - Aumento con Ball-Dropout (35%)  |             | - Simetría Matemática de Equipos  |
-        | - Ratios de desaceleración w15/w75|             | - 0.75 GBDT + 0.25 Prior Analítico|
+        | - Ratios de desaceleración w15/w75|             | - 0.72 GBDT + 0.28 Prior Analítico|
         | - Reglas de bordes y detenciones  |             | - Inmune a sesgos de dorsal/color |
         +-----------------------------------+             +-----------------------------------+
                          |                                                 |
@@ -62,7 +62,7 @@ Nuestro método desacopla el problema en componentes cinemáticos, tácticos y t
                                                   v
         +----------------------------------------------------------------------------------+
         | CAPA EPISTÉMICA DETERMINISTA JEV AI (SYSTEM ONE) (src/jev_system_one.py)         |
-        | - Primitiva 1: Resolución de Fases N/A (36 fases, 26 Saques de Banda, 24,379 f)  |
+        | - Primitiva 1: Resolución de Fases N/A (36 fases, 26 Saques de Banda, 26,500 f)  |
         | - Primitiva 2: Arbitraje de Conflicto Etiqueta vs. Cinemática (3,760 cuadros)    |
         | - Primitiva 3: Amortiguación de Puentes en Oclusión (40.7% cuadros sin balón)    |
         | - Primitiva 4: Agudización de Fronteras en Reanudaciones                         |
@@ -79,7 +79,7 @@ Nuestro método desacopla el problema en componentes cinemáticos, tácticos y t
                                                   |
                                                   v
         +----------------------------------------------------------------------------------+
-        | ARCHIVO OFICIAL: submission.csv (199,319 filas, MD5: 431b11967519ca33c7b460)    |
+        | ARCHIVO OFICIAL: submission.csv (199,319 filas, MD5: 24d98e599e9f5a35cec7f24d)   |
         +----------------------------------------------------------------------------------+
 ```
 
@@ -90,14 +90,14 @@ $$P(y = \text{'H'}) = (1.0 - P_{\text{muerto}}) \cdot P(\text{Local} \mid \text{
 $$P(y = \text{'A'}) = (1.0 - P_{\text{muerto}}) \cdot (1.0 - P(\text{Local} \mid \text{Vivo}))$$
 
 #### Cabeza 1: Detector de Balón Muerto Inmune a Oclusiones
-Entrenado con `HistGradientBoostingClassifier(max_iter=150, max_depth=6)`. Para inmunizar al modelo ante el 40.7% de oclusión en los cuadros completos, inyectamos **Ball-Dropout (35%)**: en cuadros vivos de entrenamiento se enmascaran sintéticamente las variables del balón, forzando al modelo a aprender patrones colectivos de desaceleración (ratio $w_{15} / w_{75} < 0.65$), dispersión espacial hacia banquillos y pausas tácticas.
+Entrenado con `HistGradientBoostingClassifier(max_depth=3, max_iter=80, learning_rate=0.05, min_samples_leaf=40, l2_regularization=2.0)`. Para inmunizar al modelo ante el 40.7% de oclusión en los cuadros completos, inyectamos **Ball-Dropout (35%)**: en cuadros vivos de entrenamiento se enmascaran sintéticamente las variables del balón, forzando al modelo a aprender patrones colectivos de desaceleración (ratio $w_{15} / w_{75}$), dispersión espacial y pausas tácticas, seguido de una calibración de logit ($\Delta = -2.60$) para el partido completo.
 
 #### Cabeza 2: Modelo de Posesión Viva Matemáticamente Simétrico
-Para evitar que el modelo memorice sesgos espaciales o dorsales del equipo local:
+Para evitar que el modelo memorice sesgos espaciales o dorsales del equipo local (`HistGradientBoostingClassifier(max_depth=4, max_iter=120, learning_rate=0.05, min_samples_leaf=45, l2_regularization=2.5)`):
 1. **Aumento por Intercambio de Equipos:** Cada muestra $(x, y)$ se duplica como $(x_{\text{swap}}, 1 - y)$, invirtiendo coordenadas respecto al centro del campo.
 2. **Inferencia Simétrica Garantizada:**
    $$P(\text{Local} \mid \text{Vivo}) = \frac{1}{2} \left[ P_{\text{GBDT}}(x) + (1.0 - P_{\text{GBDT}}(x_{\text{swap}})) \right]$$
-3. **Prior Analítico Cinemático-Táctico:** Fusión de $75\%$ GBDT $+ 25\%$ Prior Analítico suavizado, combinando decaimiento exponencial de distancia ($\exp(-d / 3.0)$) con la orientación táctica del Smart Tagging.
+3. **Prior Analítico Cinemático-Táctico:** Fusión de $72\%$ GBDT $+ 28\%$ Prior Analítico suavizado, combinando ventajas de proximidad en ventanas multi-segundo ($w_{75}, w_{125}, w_{200}$), anclas de toque y la orientación táctica del Smart Tagging.
 
 ---
 
@@ -106,20 +106,20 @@ Para evitar que el modelo memorice sesgos espaciales o dorsales del equipo local
 La capa Jev AI (`src/jev_system_one.py`) aplica primitivas deterministas de sentido común en tiempo real para resolver situaciones ambiguas:
 
 #### Primitiva 1: Resolución de Fases N/A y Saques de Banda
-En `BAR-ATH_tactical_smart_tagging.xml`, 36 fases tácticas (incluidos **los 26 saques de banda**) carecen de equipo asignado (`Team = N/A`), sumando **24,379 cuadros**.  
+En `BAR-ATH_tactical_smart_tagging.xml`, 36 fases tácticas (incluidos **los 26 saques de banda**) carecen de equipo asignado (`Team = N/A`), sumando **26,500 cuadros**.  
 `resolve_na_set_pieces(ds)` evalúa la ventana cinemática post-reanudación $[e_f - 25 \dots e_f + 75]$ ($1\text{ a }3\text{ segundos}$ tras el lanzamiento). Analizando la aceleración direccional del receptor y la proximidad física, resuelve deterministamente las 36 fases:
 - **22 intervalos** a favor del FC Barcelona (Local)
 - **14 intervalos** a favor del Athletic Club (Visitante)
 
 #### Primitiva 2: Arbitraje de Conflicto Etiqueta vs. Cinemática
-El Smart Tagging manual presenta una inercia humana de $1\text{ a }3\text{ segundos}$. Cuando ocurre un robo imprevisto, la etiqueta mantiene al equipo anterior mientras los datos cinemáticos confirman que el rival ya controla el balón.  
-La Primitiva 2 detecta este conflicto mediante entropía normalizada de Shannon $H(p)$ y modula la ponderación: traslada el peso del prior hacia la evidencia física inmediata, reduciendo la latencia de detección de robos a tan solo **$+0.7$ cuadros ($28\text{ ms}$)**.
+El Smart Tagging presenta una inercia de $1\text{ a }3\text{ segundos}$. Cuando ocurre un robo imprevisto, la etiqueta mantiene al equipo anterior mientras los datos cinemáticos confirman que el rival ya controla el balón.  
+La Primitiva 2 detecta este conflicto mediante entropía normalizada de Shannon $H(p)$ cuando $|\text{st\_team\_bias}| > 0.3$, el balón es visible, el rival está a $< 1.45\text{m}$ y $|\text{nearest\_team\_adv}| > 2.0\text{m}$ se opone a la etiqueta: en **3,760 cuadros evaluados** (`3,788` en el partido completo), traslada el peso hacia la evidencia física inmediata ($0.72 \to 0.95$), reduciendo la latencia de detección a tan solo **$+0.4$ cuadros ($\sim 16\text{ ms}$)**.
 
 #### Primitiva 3: Amortiguación de Puentes en Oclusión
-Durante los cuadros sin balón ($40.7\%$), la Primitiva 3 verifica si el jugador poseedor anterior y posterior a la pérdida visual pertenecen al mismo equipo. En caso afirmativo, aplica un refuerzo de log-odds acotado ($|\Delta \text{logit}| \le 0.45$), impidiendo cambios de posesión ficticios en pases aéreos y despejes.
+Durante los cuadros sin balón ($40.7\%$), la Primitiva 3 verifica si el jugador poseedor anterior y posterior a la pérdida visual pertenecen al mismo equipo ($\text{gap} \le 90$ cuadros). En caso afirmativo, aplica un refuerzo de log-odds acotado ($\Delta \text{logit} = \pm 1.2$) e interpolación monótona ($w = 0.65$) en transiciones entre equipos opuestos, impidiendo cambios de posesión ficticios en pases aéreos y despejes.
 
 #### Primitiva 4: Agudización de Reanudaciones
-Tras córners, faltas o saques de puerta, las probabilidades de balón muerto suelen disiparse con retardo. La Primitiva 4 detecta el primer impulso cinemático del balón ($v \ge 4.5\text{ m/s}$) y suprime instantáneamente $P_{\text{muerto}}$.
+Tras córners, faltas o saques de puerta, las probabilidades de balón muerto suelen disiparse con retardo. La Primitiva 4 detecta el impulso cinemático al cierre del balón parado ($\text{sp\_phase} \ge 0.85$ con $v_{\text{balón, w15}} > 5.5\text{ m/s}$ o $v_{\text{jugador, máx}} > 4.2\text{ m/s}$) y amortigua instantáneamente $P_{\text{muerto}}$ ($\times 0.15$, tope $0.20$).
 
 ---
 
@@ -177,10 +177,10 @@ Para demostrar la contribución concreta de cada componente arquitectónico, eva
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|
 | Motor Base (Sin Jev AI) | Probabilidades CV Crudas | 0.8292 | — | 0.8447 | 0.8353 | 0.8076 | 85.04% |
 | **Motor + Jev AI (System One)** | **Probabilidades CV Crudas** | **0.8317** | — | **0.8468** | **0.8363** | **0.8122** | **85.28%** |
-| Motor Base (Sin Jev AI) | Benchmark OOF Decodificado | 0.8929 | 0.4857 | 0.8860 | 0.8756 | 0.9170 | 88.58% |
-| **Motor + Jev AI (System One)** | **Benchmark OOF Decodificado** | **0.8926** | **0.4857** | **0.8857** | **0.8752** | **0.9170** | **88.54%** |
+| Motor Base (Sin Jev AI) | Benchmark OOF Decodificado | 0.8948 | 0.4857 | 0.8881 | 0.8793 | 0.9170 | 88.86% |
+| **Motor + Jev AI (System One)** | **Benchmark OOF Decodificado** | **0.8946** | **0.4857** | **0.8878** | **0.8790** | **0.9170** | **88.82%** |
 
-*Jev AI aporta ganancias consistentes en pliegues no vistos: `+0.0026` Macro F1, `+0.0046` F1 Balón Parado (D), y `+0.23%` en precisión de duelos en vivo.*
+*Jev AI aporta ganancias consistentes en probabilidades crudas sobre pliegues no vistos: `+0.0026` Macro F1, `+0.0046` F1 Balón Parado (D), y `+0.24%` en precisión de duelos en vivo.*
 
 #### Tabla 4.2: Ablación en Tablero Oficial Público (7,500 cuadros)
 | Configuración | spellF1 | macroF1 | F1 Local | F1 Visitante | F1 Muerto | Posesiones | Cambios | Latencia |
@@ -188,8 +188,8 @@ Para demostrar la contribución concreta de cada componente arquitectónico, eva
 | 1. Jugador Más Cercano (`baseline_raw`) | 0.0378 | 0.5972 | 0.7290 | 0.6430 | 0.4197 | 131 | 125 | -3.1c |
 | 2. Suavizado Móvil (`baseline_smooth50`) | 0.3256 | 0.6207 | 0.7781 | 0.7615 | 0.3225 | 26 | 38 | +4.0c |
 | 3. GBDT Simple Cabeza 2 (Sin Prior) | 0.4812 | 0.6940 | 0.8120 | 0.8015 | 0.0000 | 28 | 32 | +3.5c |
-| 4. Arquitectura Factorizada + Viterbi (Sin Jev AI) | 0.8353 | 0.8896 | 0.9357 | 0.9613 | 0.7721 | 17 | 12 | +0.7c |
-| **5. Pipeline Completo + Jev AI (Entrega Oficial)** | **0.8353** | **0.8897** | **0.9357** | **0.9613** | **0.7721** | **17** | **12** | **+0.7c** |
+| 4. Arquitectura Factorizada + Viterbi (Sin Jev AI) | 0.8353 | 0.8895 | 0.9357 | 0.9606 | 0.7721 | 17 | 12 | +0.3c |
+| **5. Pipeline Completo + Jev AI (Entrega Oficial)** | **0.8353** | **0.8896** | **0.9357** | **0.9609** | **0.7721** | **17** | **12** | **+0.4c** |
 
 ### 4.2 Limitaciones y Trabajo Futuro
 1. **Duelos Aéreos (Eje Z):** El tracking proporciona coordenadas 2D. Aunque nuestro modelo de elevación cinemática calcula arcos parabólicos para la visualización 3D, incorporar homografía monocular para estimar la altura física del balón refinaría las disputas por alto.

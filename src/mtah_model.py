@@ -15,7 +15,7 @@ Key Architectures:
      - Immune to the full-match 40.7% ball-occlusion shift
   2. Head 2: Team-Symmetric Live Possession Estimator (P(y = 'H' | y in {'H', 'A'}))
      - Strict Mathematical Team-Swap Symmetry Augmentation ([X; X_swap] training & symmetrized inference)
-     - 0.75 GBDT + 0.25 Smooth Physics & Smart-Tagging Analytical Prior
+     - 0.72 GBDT + 0.28 Smooth Physics & Smart-Tagging Analytical Prior
   3. Combined 3-Class Probability Tensor:
      - P(D) = P_dead
      - P(H) = (1.0 - P_dead) * P_home_given_alive

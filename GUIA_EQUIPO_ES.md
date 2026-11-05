@@ -198,7 +198,7 @@ El resultado esperado en consola debe ser:
 - **Filas:** `199,319`
 - **Formato:** `OK submission.csv`
 - **Spell F1:** `0.8353`
-- **Macro F1:** `0.8897`
+- **Macro F1:** `0.8896`
 - **Posesiones:** `17` (coincidencia perfecta con el Ground Truth público)
 - **Abstenciones en juego evaluado:** `0 cuadros (0.00%)`
 
