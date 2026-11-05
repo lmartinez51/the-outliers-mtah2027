@@ -1,3 +1,5 @@
+> **Aviso de estado (nov 2026).** Versiones anteriores de este repositorio ajustaron modelos y parámetros con la ventana pública de 5 minutos del ground truth. La aclaración de reglas de los organizadores (recibida en noviembre) no lo permite. Estamos rehaciendo la solución. Las métricas de documentos anteriores son en muestra y no deben leerse como resultados válidos; las afirmaciones de cumplimiento de RULES.md en esos documentos quedan retiradas hasta terminar el rediseño.
+
 # Documento Técnico Oficial: Modelado Probabilístico Factorizado en 3 Estados con Primitivas Epistémicas Deterministas Jev AI (`System One`) para el Rastreo Automatizado de Posesión en Fútbol
 
 **Competición:** More than a Hack 2027 (FC Barcelona & Metrica Sports)  
@@ -7,6 +9,8 @@
 **Partido Objetivo:** `BAR-ATH` (FC Barcelona vs. Athletic Club)  
 **Archivo Oficial de Entrega:** `The_Outliers.csv` / `submission.csv` (`MD5: f9507f09200e235665c5c988c6a1504e`)  
 **Posición Oficial en Tabla:** **Rango #1** (`spellF1 = 0.9000`, `macroF1 = 0.9772`, `15` posesiones, `-0.8` cuadros de latencia)  
+
+> ⚠️ *Cifras en muestra / fuera de muestra: no son un resultado válido. Ver el Aviso de estado al inicio de este documento.*
 
 ---
 
@@ -31,7 +35,11 @@ Para resolver estos desafíos, desarrollamos una **Arquitectura Probabilística 
 | `baseline_smooth25` | #5 | 0.2868 | 0.6200 | 0.3857 | 36 (+19) | +8.2 | — |
 | `baseline_raw` (Más Cercano) | #6 | 0.0378 | 0.5972 | 0.4197 | 131 (+114) | -3.1 | Línea base (125 cambios) |
 
+> ⚠️ *Cifras en muestra / fuera de muestra: no son un resultado válido. Ver el Aviso de estado al inicio de este documento.*
+
 *Nuestro pipeline supera a la mejor línea base con una **mejora relativa del +112.1%** en `spellF1` ($0.9000$ frente a $0.4242$), con latencia casi nula ($-0.8$ cuadros / $\sim 32\text{ ms}$) y cero rachas espurias (15/15 rachas predichas coinciden con una posesión real). *Las cifras de la ventana pública son **en muestra** (el modelo final se ajusta con esos 7,500 cuadros etiquetados); el OOF de 5 pliegues es la estimación honesta de generalización para el 95.3% privado.*
+
+> ⚠️ *Cifras en muestra / fuera de muestra: no son un resultado válido. Ver el Aviso de estado al inicio de este documento.*
 
 ---
 
@@ -125,6 +133,8 @@ Tras córners, faltas o saques de puerta, las probabilidades de balón muerto su
 
 ### 1.3 Cumplimiento Riguroso con `RULES.md`
 
+> ⚠️ *Afirmación de cumplimiento / validez retirada. Ver el Aviso de estado al inicio de este documento.*
+
 El reglamento exige reproducibilidad, transparencia y código abierto verificable:
 - **Cero Llamadas a APIs Externas:** `src/jev_system_one.py` opera de forma 100% local en NumPy/pandas, sin depender de servicios en la nube ni claves privadas.
 - **Reproducibilidad Bit a Bit:** La ejecución de `auto_process_competition.py` reproduce exactamente el archivo `submission.csv` con el hash MD5 `f9507f09200e235665c5c988c6a1504e`.
@@ -180,6 +190,8 @@ Para demostrar la contribución concreta de cada componente arquitectónico, eva
 | Motor Base (Sin Jev AI) | Benchmark OOF Decodificado | 0.9133 | 0.5846 | 0.9318 | 0.8915 | 0.9166 | 91.59% |
 | **Motor + Jev AI (System One)** | **Benchmark OOF Decodificado** | **0.9156** | **0.6714** | **0.9336** | **0.8965** | **0.9166** | **91.89%** |
 
+> ⚠️ *Las cifras en muestra / fuera de muestra no son resultados válidos y la afirmación de cumplimiento / validez está retirada. Ver el Aviso de estado al inicio de este documento.*
+
 *Jev AI aporta ganancias consistentes en pliegues no vistos: `+0.0868` spellF1, `+0.0023` macroF1 (decodificado), `+0.0044` macroF1 / `+0.0055` F1 D / `+0.45%` precisión en vivo (probabilidades crudas).*
 
 #### Tabla 4.2: Ablación en Tablero Oficial Público (7,500 cuadros)
@@ -190,8 +202,12 @@ Para demostrar la contribución concreta de cada componente arquitectónico, eva
 | 3. Arquitectura Factorizada + Viterbi (Sin Jev AI) | 0.9125 | 0.9805 | — | — | 0.9710 | 15 | — | -0.75c |
 | **4. Pipeline Completo + Jev AI (Entrega Oficial)** | **0.9000** | **0.9772** | **0.9876** | **0.9731** | **0.9710** | **15** | **18** | **-0.8c** |
 
+> ⚠️ *Cifras en muestra / fuera de muestra: no son un resultado válido. Ver el Aviso de estado al inicio de este documento.*
+
 - **Calibración Epistémica Jev AI System One:** Eleva el spellF1 fuera de muestra en `+0.0868` (0.5846 → 0.6714), el macroF1 en `+0.0023`, el F1 D en probabilidades crudas en `+0.0055` y la precisión en vivo en `+0.45%`, arbitra 8,087 cuadros de conflicto etiqueta-vs-física y resuelve las 36 fases N/A (26,500 cuadros).
 - **Salvedad honesta (ventana pública, en muestra):** allí el Motor Base puntúa marginalmente más que Motor + Jev (spellF1 `0.9125` vs. `0.9000`, macroF1 `0.9805` vs. `0.9772`) porque Jev cambia a Visitante `32` cuadros (1.28 s, cuadros 13,672..13,703) antes del robo real en 13,704. No ajustamos deliberadamente una regla a ese único evento: los pliegues OOF (datos no vistos) favorecen a Jev, y ese es el criterio relevante para el 95.3% privado del partido.
+
+> ⚠️ *Cifras en muestra / fuera de muestra: no son un resultado válido. Ver el Aviso de estado al inicio de este documento.*
 
 #### 4.1.1 Mejoras Matemáticas de la Versión 2.0 (Antes → Después, mismo decodificador de producción)
 
@@ -205,6 +221,8 @@ Para demostrar la contribución concreta de cada componente arquitectónico, eva
 | F1 Clase D ventana pública (en muestra) | 0.7721 | **0.9710** | +0.1989 |
 | Cuadros de festejo post-gol etiquetados `D` (13,733) | — | **100.0%** | — |
 | Reparto H / A / D del partido evaluado | — | **31.8% / 21.8% / 46.4%** | 56.8 min de balón vivo |
+
+> ⚠️ *Cifras en muestra / fuera de muestra: no son un resultado válido. Ver el Aviso de estado al inicio de este documento.*
 
 Mejoras que explican la ganancia:
 1. **Velocidad cinemática uniforme del balón** (`src/mtah_features.py`): diferencia finita a 25 Hz en los 199,319 cuadros. La velocidad reportada era 100% `NaN` en los cuadros `0..54,834`, lo que desactivaba en silencio todas las variables de velocidad en la ventana pública.

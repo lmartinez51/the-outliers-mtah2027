@@ -1,3 +1,5 @@
+> **Status notice (Nov 2026).** Earlier versions of this repository fitted models and parameters using the public 5-minute ground-truth window. The organizers' clarification of the rules (received in November) does not allow this. We are reworking the submission. Metrics shown in earlier documents are in-sample and must not be read as valid results, and statements of compliance with RULES.md in those documents are withdrawn until the rework is complete.
+
 # More than a Hack 2027 — Team The Outliers
 
 <p align="center">
@@ -6,6 +8,8 @@
   <img src="https://img.shields.io/badge/spellF1-0.9000_(%2B112.1%25)-A50044?style=for-the-badge" alt="spellF1 Score"/>
   <img src="https://img.shields.io/badge/macroF1-0.9772-00E5FF?style=for-the-badge&logoColor=black" alt="macroF1 Score"/>
 </p>
+
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
 
 Official competition repository for **More than a Hack 2027 (Phase 1: Automated Ball Possession Tracking)**, organised by **[FC Barcelona](https://www.fcbarcelona.com)**, **[Metrica Sports](https://metrica-sports.com)**, and **[Mobile World Capital Barcelona](https://www.mwcbarcelona.com)** at the Talent Arena.
 
@@ -67,14 +71,20 @@ rank  submission                macroF1  spellF1   poss     dur  transF1  lat_f 
    5  baseline_raw               0.5972   0.0378    131     2.0   0.1410   -3.1   0.046  6.52
 ```
 
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
+
 ### Performance Highlights
 - **Rank #1 Globally:** `spellF1 = 0.9000` vs. `0.4242` nearest baseline (**+112.1% relative gain**).
 - **Possession Count:** **15 / 17** ground-truth possessions recovered with **100% spell precision** (0 spurious; mean duration **16.3s** vs. **14.2s** ground truth).
 - **Near-Zero Latency:** **-0.8 frames** (~32 ms delay at 25 fps).
 - **Zero Abstentions:** **0 frames of X** on graded territory.
 
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
+
 ### 2.1 Out-of-Fold (OOF) 5-Fold Cross-Validation & Ablation Benchmark
 To guarantee zero-leakage generalizability across unseen match periods, we evaluated both the Motor Base and the Jev AI augmented pipeline across **5-Fold Contiguous Temporal Blocks** (1,500 frames / 1-minute blocks across 7,500 public frames):
+
+> ⚠️ *Compliance / validity statement withdrawn. See the Status notice at the top of this document.*
 
 | Evaluation Stage | Pipeline Variant | macroF1 | spellF1 | Class H F1 | Class A F1 | Class D F1 | Live H/A Acc |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -85,7 +95,11 @@ To guarantee zero-leakage generalizability across unseen match periods, we evalu
 | **Official Public Scoreboard (In-Sample)** | Motor Base (No Jev AI) | 0.9805 | 0.9125 | — | — | 0.9710 | — |
 | **Official Public Scoreboard (In-Sample)** | **Motor + Jev AI (Final Submission)**| **0.9772** | **0.9000** | **0.9876** | **0.9731** | **0.9710** | **98.77%** |
 
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
+
 *Jev AI improves unseen folds (`+0.0868` decoded spellF1, `+0.0023` macroF1; `+0.0055` D F1 and `+0.45%` live accuracy on raw probabilities) while arbitrating 8,087 graded tag-vs-physics conflict frames and resolving all 36 N/A set-piece restarts (26,500 frames). Public-window rows are in-sample (the final model is fitted on those 7,500 frames); the OOF rows are the honest generalisation estimate. On the public window Motor Base is marginally ahead of Jev in-sample (spellF1 `0.9125` vs. `0.9000`) because of one 32-frame early turnover; we did not tune to it.*
+
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
 
 ---
 
@@ -137,6 +151,8 @@ To guarantee zero-leakage generalizability across unseen match periods, we evalu
                    | 4. barca_3d_interactive_replay.html (3D Tactical Replay)   |
                    +-------------------------------------------------------------+
 ```
+
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
 
 ---
 
@@ -222,6 +238,8 @@ rank  submission                macroF1  spellF1   poss     dur  transF1  lat_f 
 ----  ------------------------  -------  -------  -----  ------  -------  -----  ------  ----
    1  The_Outliers               0.9772   0.9000     15    16.3   0.7895   -0.8   0.015  0.90
 ```
+
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
 
 ---
 

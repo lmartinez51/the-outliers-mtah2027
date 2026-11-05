@@ -1,3 +1,5 @@
+> **Status notice (Nov 2026).** Earlier versions of this repository fitted models and parameters using the public 5-minute ground-truth window. The organizers' clarification of the rules (received in November) does not allow this. We are reworking the submission. Metrics shown in earlier documents are in-sample and must not be read as valid results, and statements of compliance with RULES.md in those documents are withdrawn until the rework is complete.
+
 # Technical Document: Factored 3-State Probabilistic Modeling with Deterministic Jev AI (`System One`) Epistemic Primitives for Automated Football Possession Tracking
 
 **Competition:** More than a Hack 2027 (FC Barcelona & Metrica Sports)  
@@ -7,6 +9,8 @@
 **Target Fixture:** `BAR-ATH` (FC Barcelona vs. Athletic Club)  
 **Official Output File:** `The_Outliers.csv` / `submission.csv` (`MD5: f9507f09200e235665c5c988c6a1504e`)  
 **Official Scoreboard Rank:** **Rank #1** (`spellF1 = 0.9000`, `macroF1 = 0.9772`, `15` possessions, `-0.8` frame latency)  
+
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
 
 ---
 
@@ -31,7 +35,11 @@ To solve these challenges, we built a **Factored Two-Head Probabilistic Architec
 | `baseline_smooth25` | #5 | 0.2868 | 0.6200 | 0.3857 | 36 (+19) | +8.2 | — |
 | `baseline_raw` (Nearest Player) | #6 | 0.0378 | 0.5972 | 0.4197 | 131 (+114) | -3.1 | Baseline (125 switches) |
 
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
+
 *Our system outperforms the best competition baseline by **+112.1% relative improvement** on `spellF1` ($0.9000$ vs. $0.4242$), with near-zero latency ($-0.8$ frames / $\sim 32\text{ ms}$) and zero spurious spells (15/15 predicted spells match a ground-truth possession). *Public-window figures are **in-sample** (the final model is fitted on those 7,500 labelled frames). The 5-Fold temporal-block OOF numbers are the honest generalisation estimate for the 95.3% of the graded match that is unseen private data.**
+
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
 
 ---
 
@@ -126,10 +134,14 @@ Following a corner kick, free kick, or goal kick, dead-ball probabilities tend t
 
 ### 1.3 Strict Compliance with `RULES.md`
 
+> ⚠️ *Compliance / validity statement withdrawn. See the Status notice at the top of this document.*
+
 `RULES.md` mandates that all submissions must be reproducible, open, inspectable, and algorithmic:
 - **Zero External API Calls:** `src/jev_system_one.py` contains **zero external network requests**, zero LLM inference APIs, and zero private credentials. It is a 100% self-contained, deterministic NumPy/pandas implementation.
 - **Bit-for-Bit Determinism:** Running `auto_process_competition.py` generates the exact submission file with identical MD5 checksum (`f9507f09200e235665c5c988c6a1504e`).
 - **Data Protection Compliance:** Raw tracking files (`data/tactical/`) and large derived coordinate exports (`src/match_payload.js`, `barca_3d_interactive_replay.html`, and `artifacts/`) are excluded from version control via `.gitignore`.
+
+> ⚠️ *Compliance / validity statement withdrawn. See the Status notice at the top of this document.*
 
 ---
 
@@ -200,6 +212,8 @@ To demonstrate the concrete contribution of each architectural component, we eva
 | Motor Base (No Jev AI) | Decoded OOF Benchmark | 0.9133 | 0.5846 | 0.9318 | 0.8915 | 0.9166 | 91.59% |
 | **Motor + Jev AI (System One)** | **Decoded OOF Benchmark** | **0.9156** | **0.6714** | **0.9336** | **0.8965** | **0.9166** | **91.89%** |
 
+> ⚠️ *In-sample / out-of-fold figures are not valid results and the compliance / validity statement is withdrawn. See the Status notice at the top of this document.*
+
 *Jev AI delivers consistent net gains on unseen folds: `+0.0868` spellF1, `+0.0023` macroF1 (decoded), `+0.0044` macroF1 / `+0.0055` D F1 / `+0.45%` live accuracy (raw probabilities).*
 
 #### Table 4.2: Official Public Ground Truth Scoreboard Ablation (7,500 frames)
@@ -210,10 +224,14 @@ To demonstrate the concrete contribution of each architectural component, we eva
 | 3. Factored Architecture + Viterbi (No Jev AI) | 0.9125 | 0.9805 | — | — | 0.9710 | 15 | — | -0.75f |
 | **4. Full Engine + Jev AI System One (Final Submission)** | **0.9000** | **0.9772** | **0.9876** | **0.9731** | **0.9710** | **15** | **18** | **-0.8f** |
 
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
+
 #### Key Insights from Ablation:
 - **Factored Modeling + Viterbi (+176% relative spellF1 over baseline_smooth50):** Moving from moving-average filtering to a factored HMM sequence decoder with controlled-possession filters is the single largest performance jump, lifting spellF1 from $0.3256$ to $0.9000$ (15 of 17 possessions, 100% precision).
 - **Jev AI System One Epistemic Calibration:** Lifts out-of-fold spellF1 by `+0.0868` (0.5846 → 0.6714), macroF1 by `+0.0023`, raw-probability D F1 by `+0.0055` and live accuracy by `+0.45%`, arbitrates 8,087 graded tag-vs-physics conflict frames and resolves all 36 N/A set-piece phases (26,500 frames).
 - **Honest caveat (in-sample public window):** there the Motor Base scores marginally higher than Motor + Jev (spellF1 `0.9125` vs. `0.9000`, macroF1 `0.9805` vs. `0.9772`) because Jev switches to Away `32` frames (1.28 s, frames 13,672..13,703) before the true turnover at 13,704. We deliberately did **not** tune a gate to that single event: the OOF folds (unseen data) favour Jev, and that is the criterion that matters for the private 95.3% of the match.
+
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
 
 #### 4.1.1 Version 2.0 Mathematical Upgrades (Before → After, identical production decoder)
 
@@ -227,6 +245,8 @@ To demonstrate the concrete contribution of each architectural component, we eva
 | Public window Class D F1 (in-sample) | 0.7721 | **0.9710** | +0.1989 |
 | Post-goal celebration frames labelled `D` (13,733 frames) | — | **100.0%** | — |
 | Full-match graded split H / A / D | — | **31.8% / 21.8% / 46.4%** | 56.8 min live ball |
+
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
 
 Upgrades behind the gain:
 1. **Uniform kinematic ball speed** (`src/mtah_features.py`): 25 Hz finite difference on all 199,319 frames. The reported ball speed was 100% `NaN` in frames `0..54,834`, which silently disabled every speed feature on the public window.
