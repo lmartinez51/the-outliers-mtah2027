@@ -84,7 +84,7 @@ def step_features(rebuild: bool = False) -> float:
     if not cache_exists or rebuild:
         reason = "User requested --rebuild-cache" if rebuild else "Cache not found"
         print(f"[ACTION] Running full streaming feature extraction ({reason})...")
-        mf.main()
+        mf.main(rebuild=True)
     else:
         cache_size_mb = os.path.getsize(PATH_FEATURES_CACHE) / (1024 * 1024)
         print(f"[CACHE HIT] Features cache detected: '{PATH_FEATURES_CACHE}' ({cache_size_mb:.2f} MB)")
@@ -375,12 +375,29 @@ def main():
           f"D={d_cnt:,} ({d_cnt/len(df_sub)*100:.1f}%), "
           f"X={x_cnt:,} ({x_cnt/len(df_sub)*100:.1f}%)")
     print("-" * 80)
-    print("  [RANK]                   #1 on Leaderboard")
-    print("  [SPELL F1] (Rank Metric): 0.8353 (vs. 0.4242 nearest baseline, +96.9% relative)")
-    print("  [MACRO F1]               0.8896 (H: 0.9357, A: 0.9609, D: 0.7721)")
-    print("  [LATENCY]                +0.4 frames (near-zero delay)")
-    print("  [POSSESSIONS]            17 (Exact match with Ground Truth: 17)")
-    print("  [ABSTENTIONS]            0 frames on graded ground truth (0.00%)")
+    sb_path = os.path.join(ROOT, "evaluation", "scoreboard.csv")
+    if os.path.exists(sb_path):
+        sb_df = pd.read_csv(sb_path)
+        clean_team = (args.team_name or "The_Outliers").strip().replace(" ", "_")
+        row_df = sb_df[sb_df["submission"] == clean_team]
+        if not row_df.empty:
+            r0 = row_df.iloc[0]
+            rank_val = int(r0["rank"])
+            spell_f1_val = float(r0["spell_f1_mean"])
+            macro_f1_val = float(r0["macro_f1"])
+            f1_h_val = float(r0["f1_H"])
+            f1_a_val = float(r0["f1_A"])
+            f1_d_val = float(r0["f1_D"])
+            lat_val = float(r0["mean_latency"])
+            poss_val = int(r0["poss"])
+            gt_poss_val = int(r0["n_gt_spells"])
+            abstain_val = int(r0["n_abstain_on_graded"])
+            print(f"  [RANK]                   #{rank_val} on Leaderboard")
+            print(f"  [SPELL F1] (Rank Metric): {spell_f1_val:.4f} (vs. 0.4242 nearest baseline, +{(spell_f1_val/0.424242 - 1)*100:.1f}% relative)")
+            print(f"  [MACRO F1]               {macro_f1_val:.4f} (H: {f1_h_val:.4f}, A: {f1_a_val:.4f}, D: {f1_d_val:.4f})")
+            print(f"  [LATENCY]                {lat_val:+.1f} frames")
+            print(f"  [POSSESSIONS]            {poss_val} (Ground Truth: {gt_poss_val})")
+            print(f"  [ABSTENTIONS]            {abstain_val} frames on graded ground truth (0.00%)")
     print("-" * 80)
     print("3D TACTICAL INTERACTIVE REPLAY:")
     if not args.skip_3d and os.path.exists(PATH_STANDALONE_HTML):

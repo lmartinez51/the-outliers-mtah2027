@@ -33,7 +33,7 @@ the-outliers-mtah2027/
 
 > [!IMPORTANT]
 > **THE 1.8 GB RAW `.mp4` VIDEOS ARE NOT REQUIRED.**  
-> Our optical kinematic extractor derives velocities, accelerations, ball distances, and directional momentum vectors directly from optical tracking coordinates in ~11 seconds, eliminating the need to download or process gigabytes of video footage.
+> Our optical kinematic extractor derives velocities, accelerations, ball distances, and directional momentum vectors directly from optical tracking coordinates in ~17 seconds, eliminating the need to download or process gigabytes of video footage.
 
 ---
 
@@ -66,10 +66,10 @@ python auto_process_competition.py
 ```
 
 ### What does this command execute automatically?
-1. **Step 1 (Features):** Instant cache load (`<0.3s`) or streaming 199,319 frames (`~11s`) from raw tactical files.
+1. **Step 1 (Features):** Instant cache load (`<0.3s`) or streaming 199,319 frames (`~17s`) from raw tactical files.
 2. **Step 2 (Probabilistic Models + Jev AI):** Fits the Occlusion-Robust Dead-Ball Detector (Head 1) and Mathematically Team-Symmetric Live Possession Model (Head 2) with deterministic Jev AI (`System One`) epistemic arbitration primitives.
 3. **Step 3 (3-State Soft Viterbi Decoding):** Eliminates transient flickers and generates `submission.csv` (`199,319` frames).
-4. **Step 4 (Official Validation & Leaderboard):** Executes `evaluation/validate_submission.py` and `evaluation/run_evaluation.py`, confirming **Rank #1** on the public scoreboard (`spellF1 = 0.8353`).
+4. **Step 4 (Official Validation & Leaderboard):** Executes `evaluation/validate_submission.py` and `evaluation/run_evaluation.py`, confirming **Rank #1** on the public scoreboard (`spellF1 = 0.9000`).
 5. **Step 5 (3D Replay Generation):** Compiles the standalone, zero-dependency `barca_3d_interactive_replay.html` viewer.
 
 ---
@@ -197,9 +197,9 @@ python evaluation/run_evaluation.py
 Expected terminal output:
 - **Rows:** `199,319`
 - **Integrity:** `OK submission.csv`
-- **Spell F1:** `0.8353`
-- **Macro F1:** `0.8896`
-- **Possessions:** `17` (exact 100% match with public ground truth)
+- **Spell F1:** `0.9000`
+- **Macro F1:** `0.9772`
+- **Possessions:** `15` (of 17 in the public ground truth, 100% spell precision)
 - **Abstentions on Graded Frames:** `0 frames (0.00%)`
 
 For questions or suggestions, please contact Lorenzo Martinez on the team channel!

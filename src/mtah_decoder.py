@@ -137,31 +137,32 @@ def viterbi_decode_3state(
 def enforce_controlled_possession(
     path: np.ndarray,
     probs: Optional[np.ndarray] = None,
-    min_live_frames: int = 22,       # 0.88s: brief non-controlled touch/deflection
+    min_live_frames: int = 28,       # 1.12s: brief non-controlled touch/deflection
     dead_flicker_frames: int = 30,   # 1.20s: brief live flicker inside stoppage
-    glitch_frames: int = 8,          # 0.32s: micro-glitch adjacent to D
+    glitch_frames: int = 28,         # 1.12s: short deflection adjacent to D
     max_passes: int = 5000,
     max_sandwiched_frames: int = 115,
     sandwiched_conf_thresh: float = 0.0,
-    bridge_stoppage_frames: int = 10,
+    bridge_stoppage_frames: int = 40,
     st_team_bias: Optional[np.ndarray] = None,
     st_set_piece_active: Optional[np.ndarray] = None,
     ball_speed_rolling: Optional[np.ndarray] = None,
     absorb_stationary_setpiece: bool = False,
-    fix_start_boundary: bool = False,
+    fix_start_boundary: bool = True,
 ) -> np.ndarray:
     """
     Enforces CHALLENGE.md controlled possession rule:
       1. 'A simple touch without control, a deflection of a pass, or an aerial duel won
           without subsequent control' (short live segment < min_live_frames) sandwiched
           between two spells of the other team (A -> H -> A or H -> A -> H) is absorbed
-          into the surrounding team's possession. Optionally absorbs low-confidence
-          sandwiched deflections (< max_sandwiched_frames with mean confidence < sandwiched_conf_thresh).
+          into the surrounding team's possession. Also absorbs short (< 68 frames) deflections
+          opposing active Smart Tagging phase bias.
       2. A brief live flicker inside a stoppage (D -> Live (< dead_flicker_frames = 30) -> D)
-          is absorbed into the dead ball state (D). Optionally absorbs stationary set pieces.
-      3. A brief stoppage flicker inside a live possession (Live -> D (< bridge_stoppage_frames) -> Same Live)
+          is absorbed into the dead ball state (D).
+      3. A brief stoppage flicker inside a live possession (Live -> D (< bridge_stoppage_frames = 40) -> Same Live)
           is absorbed into the live possession.
-      4. Micro-glitches adjacent to D (< glitch_frames = 8) are absorbed into the neighbor.
+      4. Short deflections adjacent to D (< glitch_frames = 28, or < 68 frames opposing tag bias
+          immediately prior to D) are absorbed into D or the adjacent live spell.
       5. Tiny micro-glitches (< 4 frames) are merged into the preceding state.
     """
     clean_path = path.copy()
@@ -189,20 +190,27 @@ def enforce_controlled_possession(
             seg_len = ends[i] - starts[i]
             s, e = starts[i], ends[i]
 
+            # Rule 0: Tiny micro-glitch (< 4 frames)
+            if seg_len < 4:
+                clean_path[s:e] = lbl_prev
+                changed = True
+                break
+
+            bias_opposes = False
+            if st_team_bias is not None and lbl_curr in (0, 1):
+                b_mean = float(np.mean(st_team_bias[s:e]))
+                bias_opposes = (lbl_curr == 0 and b_mean < -0.3) or (lbl_curr == 1 and b_mean > 0.3)
+
             # Rule 1: Sandwiched live touch without control (A -> H -> A or H -> A -> H)
             if lbl_curr in (0, 1) and lbl_prev in (0, 1) and lbl_next in (0, 1):
                 if lbl_prev == lbl_next and lbl_curr != lbl_prev:
-                    if seg_len < min_live_frames:
+                    if seg_len < min_live_frames or (bias_opposes and seg_len < 68):
                         clean_path[s:e] = lbl_prev
                         changed = True
                         break
                     if sandwiched_conf_thresh > 0.0 and probs is not None and seg_len < max_sandwiched_frames:
                         seg_conf = float(np.mean(probs[s:e, lbl_curr]))
-                        bias_opposes = False
-                        if st_team_bias is not None:
-                            b_slice = st_team_bias[s:e]
-                            bias_opposes = (lbl_curr == 0 and np.mean(b_slice) < -0.3) or (lbl_curr == 1 and np.mean(b_slice) > 0.3)
-                        if seg_conf < sandwiched_conf_thresh or (bias_opposes and seg_len < 60):
+                        if seg_conf < sandwiched_conf_thresh:
                             clean_path[s:e] = lbl_prev
                             changed = True
                             break
@@ -228,18 +236,15 @@ def enforce_controlled_possession(
                     changed = True
                     break
 
-            # Rule 4: Micro-glitch adjacent to D (D -> H -> A or H -> A -> D)
+            # Rule 4: Short deflection / transition into or out of Dead Ball (D -> H -> A or H -> A -> D)
             if lbl_curr in (0, 1) and (lbl_prev == 2 or lbl_next == 2):
-                if seg_len < glitch_frames:
-                    clean_path[s:e] = lbl_prev if lbl_next == 2 else lbl_next
+                if seg_len < glitch_frames or (lbl_next == 2 and bias_opposes and seg_len < 68):
+                    if lbl_next == 2 and probs is not None and float(np.mean(probs[s:e, 2])) > 0.22:
+                        clean_path[s:e] = 2
+                    else:
+                        clean_path[s:e] = lbl_prev if lbl_next == 2 else lbl_next
                     changed = True
                     break
-
-            # Rule 5: Tiny micro-glitch (< 4 frames)
-            if seg_len < 4:
-                clean_path[s:e] = lbl_prev
-                changed = True
-                break
 
         if not changed:
             break
@@ -255,24 +260,25 @@ def evaluate_oof_benchmark(
     oof_probs: np.ndarray,
     classes: np.ndarray = mm.CLASSES,
     gt_path: str = DEFAULT_PUBLIC_GT,
-    p_turnover: float = -3.5,
-    p_live_to_dead: float = -2.0,
-    p_dead_to_live: float = -2.0,
+    p_turnover: float = -4.2,
+    p_live_to_dead: float = -2.5,
+    p_dead_to_live: float = -2.5,
     d_log_boost: float = 0.0,
-    min_live_frames: int = 18,
+    min_live_frames: int = 28,
     dead_flicker_frames: int = 30,
-    glitch_frames: int = 8,
+    glitch_frames: int = 28,
     max_sandwiched_frames: int = 115,
-    sandwiched_conf_thresh: float = 0.71,
-    bridge_stoppage_frames: int = 70,
-    absorb_stationary_setpiece: bool = True,
+    sandwiched_conf_thresh: float = 0.0,
+    bridge_stoppage_frames: int = 40,
+    absorb_stationary_setpiece: bool = False,
     fix_start_boundary: bool = True,
     ds: Optional[mf.FeatureDataset] = None,
     verbose: bool = True,
 ) -> Dict:
     """
     Evaluates out-of-fold (OOF) cross-validation predictions on the 7,500 public frames
-    using the official competition scoring engine (evaluation.possession_metrics).
+    using the official competition scoring engine (evaluation.possession_metrics) and the
+    exact same unified decoder parameters used in production (`decode_full_match`).
 
     Provides an honest, zero-leakage benchmark on the 5-minute public ground truth.
     """
@@ -280,7 +286,7 @@ def evaluate_oof_benchmark(
     gt_codes = pm.label_codes(gt_df)
     n_total_frames = len(gt_codes)
 
-    if ds is None and (sandwiched_conf_thresh > 0.0 or absorb_stationary_setpiece):
+    if ds is None:
         try:
             ds = mf.extract_all_features()
         except Exception:
@@ -354,11 +360,13 @@ def decode_full_match(
     p_live_to_dead: float = -2.5,
     p_dead_to_live: float = -2.5,
     d_log_boost: float = 0.0,
-    min_live_frames: int = 22,
+    min_live_frames: int = 28,
     dead_flicker_frames: int = 30,
-    glitch_frames: int = 8,
+    glitch_frames: int = 28,
+    bridge_stoppage_frames: int = 40,
     oof_probs: Optional[np.ndarray] = None,
     oof_public: bool = False,
+    ds: Optional[mf.FeatureDataset] = None,
     verbose: bool = True,
 ) -> pd.DataFrame:
     """
@@ -374,6 +382,12 @@ def decode_full_match(
     assert len(full_probs) == n_total_frames, (
         f"full_probs length {len(full_probs)} != expected video frames {n_total_frames}"
     )
+
+    if ds is None:
+        try:
+            ds = mf.extract_all_features()
+        except Exception:
+            ds = None
 
     probs_to_decode = full_probs.copy()
     if oof_public and oof_probs is not None:
@@ -398,6 +412,7 @@ def decode_full_match(
         half_slice = slice(first_frame, last_frame + 1)
         half_probs = probs_to_decode[half_slice]
         n_half_frames = len(half_probs)
+        st_b_half = ds["st_team_bias"][half_slice] if ds is not None else None
 
         path_half = viterbi_decode_3state(
             probs=half_probs,
@@ -415,6 +430,9 @@ def decode_full_match(
                 min_live_frames=min_live_frames,
                 dead_flicker_frames=dead_flicker_frames,
                 glitch_frames=glitch_frames,
+                bridge_stoppage_frames=bridge_stoppage_frames,
+                st_team_bias=st_b_half,
+                fix_start_boundary=True,
             )
 
         labels[half_slice] = classes[path_half]
@@ -454,9 +472,9 @@ def run_ablation_comparison(
     p_live_to_dead: float = -2.5,
     p_dead_to_live: float = -2.5,
     d_log_boost: float = 0.0,
-    min_live_frames: int = 22,
+    min_live_frames: int = 28,
     dead_flicker_frames: int = 30,
-    glitch_frames: int = 8,
+    glitch_frames: int = 28,
 ) -> Dict[str, Any]:
     """
     Computes a rigorous, side-by-side factual ablation comparison between:
@@ -638,9 +656,9 @@ def generate_and_verify_submission(
     p_live_to_dead: float = -2.5,
     p_dead_to_live: float = -2.5,
     d_log_boost: float = 0.0,
-    min_live_frames: int = 22,
+    min_live_frames: int = 28,
     dead_flicker_frames: int = 30,
-    glitch_frames: int = 8,
+    glitch_frames: int = 28,
     oof_public: bool = False,
     use_jev: bool = True,
     run_ablation: bool = True,
@@ -770,9 +788,9 @@ def main():
     parser.add_argument("--p_live_dead", type=float, default=-2.5, help="Log-penalty for Live -> Dead transition (default: -2.5)")
     parser.add_argument("--p_dead_live", type=float, default=-2.5, help="Log-penalty for Dead -> Live transition (default: -2.5)")
     parser.add_argument("--d_log_boost", type=float, default=0.0, help="Optional log-emission boost for class D (default: 0.0)")
-    parser.add_argument("--min_live_frames", type=int, default=22, help="Min live frames for controlled possession (default: 22)")
+    parser.add_argument("--min_live_frames", type=int, default=28, help="Min live frames for controlled possession (default: 28)")
     parser.add_argument("--dead_flicker_frames", type=int, default=30, help="Stoppage live flicker threshold (default: 30)")
-    parser.add_argument("--glitch_frames", type=int, default=8, help="Isolated micro-glitch threshold (default: 8)")
+    parser.add_argument("--glitch_frames", type=int, default=28, help="Isolated micro-glitch threshold (default: 28)")
     parser.add_argument("--team-name", type=str, default="The_Outliers", help="Competition team name (default: 'The_Outliers')")
     parser.add_argument("--oof-public", action="store_true", help="Splice strictly leak-free OOF predictions into public 5-min window")
     parser.add_argument("--no-jev", action="store_true", help="Disable Jev AI System One and decode with Motor Base")

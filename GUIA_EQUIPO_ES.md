@@ -33,7 +33,7 @@ the-outliers-mtah2027/
 
 > [!IMPORTANT]
 > **LOS VIDEOS `.mp4` DE 1.8 GB NO SON NECESARIOS.**  
-> Nuestro extractor cinemático extrae las velocidades, aceleraciones y distancias directamente del tracking óptico en 11 segundos, ahorrándote descargar gigabytes de video.
+> Nuestro extractor cinemático extrae las velocidades, aceleraciones y distancias directamente del tracking óptico en ~17 segundos, ahorrándote descargar gigabytes de video.
 
 ---
 
@@ -69,7 +69,7 @@ python auto_process_competition.py
 1. **Paso 1 (Features):** Carga o procesa los 199,319 cuadros tácticos del partido.
 2. **Paso 2 (Modelos + Jev AI):** Entrena el detector de balón muerto y el estimador simétrico de posesión viva con primitivas epistémicas deterministas.
 3. **Paso 3 (Decodificación Viterbi):** Aplica programación dinámica para suprimir parpadeos falsos y genera `submission.csv` (`199,319` filas).
-4. **Paso 4 (Validación y Leaderboard):** Ejecuta `evaluation/validate_submission.py` y `evaluation/run_evaluation.py`, confirmando el **Puesto #1** en la tabla oficial (`spellF1 = 0.8353`).
+4. **Paso 4 (Validación y Leaderboard):** Ejecuta `evaluation/validate_submission.py` y `evaluation/run_evaluation.py`, confirmando el **Puesto #1** en la tabla oficial (`spellF1 = 0.9000`).
 5. **Paso 5 (Visor 3D):** Compila el archivo autocontenido `barca_3d_interactive_replay.html` para inspección visual inmediata.
 
 ---
@@ -197,9 +197,9 @@ python evaluation/run_evaluation.py
 El resultado esperado en consola debe ser:
 - **Filas:** `199,319`
 - **Formato:** `OK submission.csv`
-- **Spell F1:** `0.8353`
-- **Macro F1:** `0.8896`
-- **Posesiones:** `17` (coincidencia perfecta con el Ground Truth público)
+- **Spell F1:** `0.9000`
+- **Macro F1:** `0.9772`
+- **Posesiones:** `15` (de 17 en el Ground Truth público, 100% de precisión de rachas)
 - **Abstenciones en juego evaluado:** `0 cuadros (0.00%)`
 
 ¡Cualquier duda o ajuste, comunícate con Lorenzo Martinez en el canal del equipo!

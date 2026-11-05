@@ -3,8 +3,8 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Competition-More_Than_A_Hack_2027-004D98?style=for-the-badge&logo=fcbarcelona&logoColor=EDBB00" alt="Competition"/>
   <img src="https://img.shields.io/badge/Rank-Rank_%231_on_Leaderboard-EDBB00?style=for-the-badge&logo=trophy&logoColor=black" alt="Leaderboard Rank"/>
-  <img src="https://img.shields.io/badge/spellF1-0.8353_(%2B96.9%25)-A50044?style=for-the-badge" alt="spellF1 Score"/>
-  <img src="https://img.shields.io/badge/macroF1-0.8896-00E5FF?style=for-the-badge&logoColor=black" alt="macroF1 Score"/>
+  <img src="https://img.shields.io/badge/spellF1-0.9000_(%2B112.1%25)-A50044?style=for-the-badge" alt="spellF1 Score"/>
+  <img src="https://img.shields.io/badge/macroF1-0.9772-00E5FF?style=for-the-badge&logoColor=black" alt="macroF1 Score"/>
 </p>
 
 Official competition repository for **More than a Hack 2027 (Phase 1: Automated Ball Possession Tracking)**, organised by **[FC Barcelona](https://www.fcbarcelona.com)**, **[Metrica Sports](https://metrica-sports.com)**, and **[Mobile World Capital Barcelona](https://www.mwcbarcelona.com)** at the Talent Arena.
@@ -17,7 +17,7 @@ Official competition repository for **More than a Hack 2027 (Phase 1: Automated 
   - **Steven Ibarra**
 - **Repository:** [`the-outliers-mtah2027`](https://github.com/lmartinez51/the-outliers-mtah2027)
 - **Target Fixture:** `BAR-ATH` (FC Barcelona vs. Athletic Club, 199,319 video frames @ 25 fps)
-- **Primary Deliverable:** `The_Outliers.csv` (`MD5: 24d98e599e9f5a35cec7f24dc92b8740`)
+- **Primary Deliverable:** `The_Outliers.csv` (`MD5: f9507f09200e235665c5c988c6a1504e`)
 
 ---
 
@@ -60,7 +60,7 @@ spellF1 = mean possession-spell F1 over IoU 0.3/0.4/0.5/0.6/0.7; transF1/lat_f a
 
 rank  submission                macroF1  spellF1   poss     dur  transF1  lat_f  shareE  frag
 ----  ------------------------  -------  -------  -----  ------  -------  -----  ------  ----
-   1  The_Outliers               0.8896   0.8353     17    15.5   0.6500   +0.4   0.009  1.00
+   1  The_Outliers               0.9772   0.9000     15    16.3   0.7895   -0.8   0.015  0.90
    2  baseline_smooth125         0.5812   0.4242     16    18.5   0.1667   -7.7   0.052  0.81
    3  baseline_smooth50          0.6207   0.3256     26    10.8   0.0816   +4.0   0.048  1.43
    4  baseline_smooth25          0.6200   0.2868     36     7.6   0.2034   +8.2   0.056  1.90
@@ -68,9 +68,9 @@ rank  submission                macroF1  spellF1   poss     dur  transF1  lat_f 
 ```
 
 ### Performance Highlights
-- **Rank #1 Globally:** `spellF1 = 0.8353` vs. `0.4242` nearest baseline (**+96.9% relative gain**).
-- **Exact Possession Count:** **17 / 17** possessions detected (mean duration **15.5s** vs. **14.2s** ground truth).
-- **Near-Zero Latency:** **+0.4 frames** (~16 ms delay at 25 fps).
+- **Rank #1 Globally:** `spellF1 = 0.9000` vs. `0.4242` nearest baseline (**+112.1% relative gain**).
+- **Possession Count:** **15 / 17** ground-truth possessions recovered with **100% spell precision** (0 spurious; mean duration **16.3s** vs. **14.2s** ground truth).
+- **Near-Zero Latency:** **-0.8 frames** (~32 ms delay at 25 fps).
 - **Zero Abstentions:** **0 frames of X** on graded territory.
 
 ### 2.1 Out-of-Fold (OOF) 5-Fold Cross-Validation & Ablation Benchmark
@@ -78,14 +78,14 @@ To guarantee zero-leakage generalizability across unseen match periods, we evalu
 
 | Evaluation Stage | Pipeline Variant | macroF1 | spellF1 | Class H F1 | Class A F1 | Class D F1 | Live H/A Acc |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **5-Fold OOF CV (Raw Probabilities)** | Motor Base (No Jev AI) | 0.8292 | — | 0.8447 | 0.8353 | 0.8076 | 85.04% |
-| **5-Fold OOF CV (Raw Probabilities)** | **Motor + Jev AI (System One)** | **0.8317** | — | **0.8468** | **0.8363** | **0.8122** | **85.28%** |
-| **5-Fold OOF CV (Decoded Benchmark)** | Motor Base (No Jev AI) | 0.8948 | 0.4857 | 0.8881 | 0.8793 | 0.9170 | 88.86% |
-| **5-Fold OOF CV (Decoded Benchmark)** | **Motor + Jev AI (System One)** | **0.8946** | **0.4857** | **0.8878** | **0.8790** | **0.9170** | **88.82%** |
-| **Official Public Scoreboard (Full)** | Motor Base (No Jev AI) | 0.8895 | 0.8353 | 0.9357 | 0.9606 | 0.7721 | 98.89% |
-| **Official Public Scoreboard (Full)** | **Motor + Jev AI (Final Submission)**| **0.8896** | **0.8353** | **0.9357** | **0.9609** | **0.7721** | **98.89%** |
+| **5-Fold OOF CV (Raw Probabilities)** | Motor Base (No Jev AI) | 0.8884 | — | — | — | 0.8960 | 88.66% |
+| **5-Fold OOF CV (Raw Probabilities)** | **Motor + Jev AI (System One)** | **0.8929** | — | — | — | **0.9015** | **89.11%** |
+| **5-Fold OOF CV (Decoded Benchmark)** | Motor Base (No Jev AI) | 0.9133 | 0.5846 | 0.9318 | 0.8915 | 0.9166 | 91.59% |
+| **5-Fold OOF CV (Decoded Benchmark)** | **Motor + Jev AI (System One)** | **0.9156** | **0.6714** | **0.9336** | **0.8965** | **0.9166** | **91.89%** |
+| **Official Public Scoreboard (In-Sample)** | Motor Base (No Jev AI) | 0.9805 | 0.9125 | — | — | 0.9710 | — |
+| **Official Public Scoreboard (In-Sample)** | **Motor + Jev AI (Final Submission)**| **0.9772** | **0.9000** | **0.9876** | **0.9731** | **0.9710** | **98.77%** |
 
-*Jev AI delivers statistically verified net gains across unseen raw probability folds (`+0.0026` Macro F1, `+0.0046` Dead-Ball D F1, `+0.24%` live duel accuracy) while arbitrating 3,760 graded tag-vs-physics conflict frames and resolving all 36 N/A set-piece restarts (26,500 frames) across the full 90-minute match.*
+*Jev AI improves unseen folds (`+0.0868` decoded spellF1, `+0.0023` macroF1; `+0.0055` D F1 and `+0.45%` live accuracy on raw probabilities) while arbitrating 8,087 graded tag-vs-physics conflict frames and resolving all 36 N/A set-piece restarts (26,500 frames). Public-window rows are in-sample (the final model is fitted on those 7,500 frames); the OOF rows are the honest generalisation estimate. On the public window Motor Base is marginally ahead of Jev in-sample (spellF1 `0.9125` vs. `0.9000`) because of one 32-frame early turnover; we did not tune to it.*
 
 ---
 
@@ -96,7 +96,7 @@ To guarantee zero-leakage generalizability across unseen match periods, we evalu
 | RAW INPUTS: BAR-ATH_tactical_atd.txt (25 fps Tracking) + BAR-ATH_tactical_smart_tagging.xml      |
 +---------------------------------------------------------------------------------------------------+
                                                   |
-                    [ Streaming Feature Extraction: src/mtah_features.py (11.2s CPU) ]
+                    [ Streaming Feature Extraction: src/mtah_features.py (16.5s CPU) ]
                                                   |
                          +------------------------+------------------------+
                          |                                                 |
@@ -104,7 +104,7 @@ To guarantee zero-leakage generalizability across unseen match periods, we evalu
         +-----------------------------------+             +-----------------------------------+
         | HEAD 1: Dead-Ball Detector (GBDT) |             | HEAD 2: Live Possession Estimator |
         | P(Dead)                           |             | P(Home | Live)                    |
-        | - 35% Ball-Dropout Augmentation   |             | - Strict Team-Swap Symmetry       |
+        | - 45% Ball-Dropout Augmentation   |             | - Strict Team-Swap Symmetry       |
         | - Speed slowdown ratios (w15/w75) |             | - 0.72 GBDT + 0.28 Smooth Prior   |
         | - Boundary & stoppage overrides   |             | - Immune to team color/slot bias  |
         +-----------------------------------+             +-----------------------------------+
@@ -123,7 +123,7 @@ To guarantee zero-leakage generalizability across unseen match periods, we evalu
      +-----------------------------------------------------------------------------------------+
      | 3-STATE SOFT VITERBI SEQUENCE DECODER (src/mtah_decoder.py)                             |
      | - Log-Space Dynamic Programming (p_turnover=-4.2, p_live_to_dead=-2.5, p_dead_to_live)  |
-     | - Deflection Absorber (switches < 22 frames = 0.88s absorbed into surrounding spell)    |
+     | - Deflection Absorber (switches < 28 frames = 1.12s absorbed into surrounding spell)    |
      | - Stoppage Flicker Absorber (D -> Live < 30 frames -> D absorbed into D)                |
      | - Isolated Micro-Glitch Filter (< 8 frames = 0.32s)                                     |
      +-----------------------------------------------------------------------------------------+
@@ -131,7 +131,7 @@ To guarantee zero-leakage generalizability across unseen match periods, we evalu
                                                   v
                    +-------------------------------------------------------------+
                    | OFFICIAL DELIVERABLES:                                      |
-                   | 1. submission.csv / The_Outliers.csv (MD5: 24d98e599e9f...) |
+                   | 1. submission.csv / The_Outliers.csv (MD5: f9507f09200e...) |
                    | 2. evaluation/results/The_Outliers.csv (Rank #1 Leaderboard)|
                    | 3. deliverables/The_Outliers.csv & deliverables/The_Outliers.md
                    | 4. barca_3d_interactive_replay.html (3D Tactical Replay)   |
@@ -209,7 +209,7 @@ The_Outliers.csv  199319 rows  OK
 ```
 **Hexadecimal MD5 Checksum:**
 ```
-24d98e599e9f5a35cec7f24dc92b8740
+f9507f09200e235665c5c988c6a1504e
 ```
 
 ### 5.2 Official Leaderboard Ranking
@@ -220,7 +220,7 @@ python evaluation/run_evaluation.py
 ```
 rank  submission                macroF1  spellF1   poss     dur  transF1  lat_f  shareE  frag
 ----  ------------------------  -------  -------  -----  ------  -------  -----  ------  ----
-   1  The_Outliers               0.8896   0.8353     17    15.5   0.6500   +0.4   0.009  1.00
+   1  The_Outliers               0.9772   0.9000     15    16.3   0.7895   -0.8   0.015  0.90
 ```
 
 ---
@@ -255,7 +255,7 @@ python auto_process_competition.py --3d-slice public --3d-stride 1
 
 Per official rules in [SUBMISSION.md](SUBMISSION.md), all deliverables are organized in the repository and the `deliverables/` folder:
 
-- [x] **Deliverable 1 (Possession File):** `The_Outliers.csv` & `deliverables/The_Outliers.csv` (199,319 rows, MD5: `24d98e599e9f5a35cec7f24dc92b8740`)
+- [x] **Deliverable 1 (Possession File):** `The_Outliers.csv` & `deliverables/The_Outliers.csv` (199,319 rows, MD5: `f9507f09200e235665c5c988c6a1504e`)
 - [x] **Deliverable 2 (Public Code Repository):** Clean, self-contained repo with pinned `requirements.txt` and master orchestrator `auto_process_competition.py`
 - [x] **Deliverable 3 (Technical Document):** `The_Outliers.md`, `TECHNICAL_DOCUMENT.md`, and `DOCUMENTO_TECNICO_ES.md`
 - [x] **Zero Gated Data Leaks:** `.gitignore` strictly protects raw tracking, video, and cache files.

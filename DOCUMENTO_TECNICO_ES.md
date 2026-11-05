@@ -5,8 +5,8 @@
 **Autores:** Lorenzo Martínez, Ana Karen Arellano y Steven Ibarra  
 **Repositorio:** [`the-outliers-mtah2027`](https://github.com/lmartinez51/the-outliers-mtah2027)  
 **Partido Objetivo:** `BAR-ATH` (FC Barcelona vs. Athletic Club)  
-**Archivo Oficial de Entrega:** `The_Outliers.csv` / `submission.csv` (`MD5: 24d98e599e9f5a35cec7f24dc92b8740`)  
-**Posición Oficial en Tabla:** **Rango #1** (`spellF1 = 0.8353`, `macroF1 = 0.8896`, `17` posesiones exactas, `+0.4` cuadros de latencia)  
+**Archivo Oficial de Entrega:** `The_Outliers.csv` / `submission.csv` (`MD5: f9507f09200e235665c5c988c6a1504e`)  
+**Posición Oficial en Tabla:** **Rango #1** (`spellF1 = 0.9000`, `macroF1 = 0.9772`, `15` posesiones, `-0.8` cuadros de latencia)  
 
 ---
 
@@ -24,14 +24,14 @@ Para resolver estos desafíos, desarrollamos una **Arquitectura Probabilística 
 
 | Modelo / Pipeline | Rango | spellF1 (Oficial) | macroF1 | F1 Balón Muerto (D) | Posesiones (GT=17) | Latencia ($\Delta$ cuadros) | Parpadeos Evitados |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Nuestra IA + Jev AI (`System One`)** | **#1** | **0.8353** | **0.8896** | **0.7721** | **17 (Exacto)** | **+0.4** | **113 evitados (90.4%)** |
-| Motor Base (Sin Jev AI) | #2 | 0.8353 | 0.8895 | 0.7721 | 17 (Exacto) | +0.3 | 113 evitados (90.4%) |
+| **Nuestra IA + Jev AI (`System One`)** | **#1** | **0.9000** | **0.9772** | **0.9710** | **15 (GT=17, 100% precisión)** | **-0.8** | **116 menos que raw (-88.5%)** |
+| Motor Base (Sin Jev AI, ablación) | — | 0.9125 | 0.9805 | 0.9710 | 15 (GT=17) | -0.75 | 116 menos que raw (-88.5%) |
 | `baseline_smooth125` | #3 | 0.4242 | 0.5812 | 0.1464 | 16 (-1) | -7.7 | — |
 | `baseline_smooth50` | #4 | 0.3256 | 0.6207 | 0.3225 | 26 (+9) | +4.0 | — |
 | `baseline_smooth25` | #5 | 0.2868 | 0.6200 | 0.3857 | 36 (+19) | +8.2 | — |
 | `baseline_raw` (Más Cercano) | #6 | 0.0378 | 0.5972 | 0.4197 | 131 (+114) | -3.1 | Línea base (125 cambios) |
 
-*Nuestro pipeline supera a la mejor línea base con una **mejora relativa del +96.9%** en `spellF1` ($0.8353$ frente a $0.4242$), logrando latencia casi nula ($+0.4$ cuadros / $\sim 16\text{ ms}$) y coincidencia exacta en el número de posesiones ($17/17$).*
+*Nuestro pipeline supera a la mejor línea base con una **mejora relativa del +112.1%** en `spellF1` ($0.9000$ frente a $0.4242$), con latencia casi nula ($-0.8$ cuadros / $\sim 32\text{ ms}$) y cero rachas espurias (15/15 rachas predichas coinciden con una posesión real). *Las cifras de la ventana pública son **en muestra** (el modelo final se ajusta con esos 7,500 cuadros etiquetados); el OOF de 5 pliegues es la estimación honesta de generalización para el 95.3% privado.*
 
 ---
 
@@ -44,7 +44,7 @@ Nuestro método desacopla el problema en componentes cinemáticos, tácticos y t
 | ENTRADAS CRUDAS: BAR-ATH_tactical_atd.txt (Tracking 25 fps) + BAR-ATH_tactical_smart_tagging.xml  |
 +---------------------------------------------------------------------------------------------------+
                                                   |
-              [ Extracción Cinemática por Streaming: src/mtah_features.py (11.2s en CPU) ]
+              [ Extracción Cinemática por Streaming: src/mtah_features.py (16.5s en CPU) ]
                                                   |
                          +------------------------+------------------------+
                          |                                                 |
@@ -52,7 +52,7 @@ Nuestro método desacopla el problema en componentes cinemáticos, tácticos y t
         +-----------------------------------+             +-----------------------------------+
         | CABEZA 1: Detector Balón Muerto   |             | CABEZA 2: Posesión Viva Simétrica |
         | P(Balón Muerto / D)               |             | P(Local | Juego Vivo)             |
-        | - Aumento con Ball-Dropout (35%)  |             | - Simetría Matemática de Equipos  |
+        | - Aumento con Ball-Dropout (45%)  |             | - Simetría Matemática de Equipos  |
         | - Ratios de desaceleración w15/w75|             | - 0.72 GBDT + 0.28 Prior Analítico|
         | - Reglas de bordes y detenciones  |             | - Inmune a sesgos de dorsal/color |
         +-----------------------------------+             +-----------------------------------+
@@ -63,7 +63,7 @@ Nuestro método desacopla el problema en componentes cinemáticos, tácticos y t
         +----------------------------------------------------------------------------------+
         | CAPA EPISTÉMICA DETERMINISTA JEV AI (SYSTEM ONE) (src/jev_system_one.py)         |
         | - Primitiva 1: Resolución de Fases N/A (36 fases, 26 Saques de Banda, 26,500 f)  |
-        | - Primitiva 2: Arbitraje de Conflicto Etiqueta vs. Cinemática (3,760 cuadros)    |
+        | - Primitiva 2: Arbitraje de Conflicto Etiqueta vs. Cinemática (8,087 cuadros)    |
         | - Primitiva 3: Amortiguación de Puentes en Oclusión (40.7% cuadros sin balón)    |
         | - Primitiva 4: Agudización de Fronteras en Reanudaciones                         |
         +----------------------------------------------------------------------------------+
@@ -72,14 +72,14 @@ Nuestro método desacopla el problema en componentes cinemáticos, tácticos y t
         +----------------------------------------------------------------------------------+
         | DECODIFICADOR SECUENCIAL VITERBI SUAVE DE 3 ESTADOS (src/mtah_decoder.py)        |
         | - Programación dinámica en espacio logarítmico (penalización p_turnover = -4.2)  |
-        | - Filtros de posesión controlada: Absorción de toques fugaces (< 22 f = 0.88s)   |
+        | - Filtros de posesión controlada: Absorción de toques fugaces (< 28 f = 1.12s)   |
         | - Supresión de parpadeos en detención (< 30 cuadros) y micro-anomalías (< 8 f)   |
         | - Asignación de 'X' estrictamente en 40,462 cuadros no evaluados (0% en evaluados|
         +----------------------------------------------------------------------------------+
                                                   |
                                                   v
         +----------------------------------------------------------------------------------+
-        | ARCHIVO OFICIAL: submission.csv (199,319 filas, MD5: 24d98e599e9f5a35cec7f24d)   |
+        | ARCHIVO OFICIAL: submission.csv (199,319 filas, MD5: f9507f09200e235665c5c988)   |
         +----------------------------------------------------------------------------------+
 ```
 
@@ -90,7 +90,7 @@ $$P(y = \text{'H'}) = (1.0 - P_{\text{muerto}}) \cdot P(\text{Local} \mid \text{
 $$P(y = \text{'A'}) = (1.0 - P_{\text{muerto}}) \cdot (1.0 - P(\text{Local} \mid \text{Vivo}))$$
 
 #### Cabeza 1: Detector de Balón Muerto Inmune a Oclusiones
-Entrenado con `HistGradientBoostingClassifier(max_depth=3, max_iter=80, learning_rate=0.05, min_samples_leaf=40, l2_regularization=2.0)`. Para inmunizar al modelo ante el 40.7% de oclusión en los cuadros completos, inyectamos **Ball-Dropout (35%)**: en cuadros vivos de entrenamiento se enmascaran sintéticamente las variables del balón, forzando al modelo a aprender patrones colectivos de desaceleración (ratio $w_{15} / w_{75}$), dispersión espacial y pausas tácticas, seguido de una calibración de logit ($\Delta = -2.60$) para el partido completo.
+Entrenado con `HistGradientBoostingClassifier(max_depth=3, max_iter=80, learning_rate=0.05, min_samples_leaf=40, l2_regularization=2.0)`. Para inmunizar al modelo ante el 40.7% de oclusión en los cuadros completos, inyectamos **Ball-Dropout (45%)**: en cuadros vivos de entrenamiento se enmascaran sintéticamente las variables del balón, forzando al modelo a aprender patrones colectivos de desaceleración (ratio $w_{15} / w_{75}$), dispersión espacial y pausas tácticas, seguido de una calibración de logit ($\Delta = -1.20$) para el partido completo. La velocidad del balón se calcula como diferencia finita cinemática uniforme a 25 Hz en todos los cuadros.
 
 #### Cabeza 2: Modelo de Posesión Viva Matemáticamente Simétrico
 Para evitar que el modelo memorice sesgos espaciales o dorsales del equipo local (`HistGradientBoostingClassifier(max_depth=4, max_iter=120, learning_rate=0.05, min_samples_leaf=45, l2_regularization=2.5)`):
@@ -107,13 +107,13 @@ La capa Jev AI (`src/jev_system_one.py`) aplica primitivas deterministas de sent
 
 #### Primitiva 1: Resolución de Fases N/A y Saques de Banda
 En `BAR-ATH_tactical_smart_tagging.xml`, 36 fases tácticas (incluidos **los 26 saques de banda**) carecen de equipo asignado (`Team = N/A`), sumando **26,500 cuadros**.  
-`resolve_na_set_pieces(ds)` evalúa la ventana cinemática post-reanudación $[e_f - 25 \dots e_f + 75]$ ($1\text{ a }3\text{ segundos}$ tras el lanzamiento). Analizando la aceleración direccional del receptor y la proximidad física, resuelve deterministamente las 36 fases:
-- **22 intervalos** a favor del FC Barcelona (Local)
-- **14 intervalos** a favor del Athletic Club (Visitante)
+`resolve_na_set_pieces(ds)` evalúa la ventana cinemática alrededor del cuadro físico de reanudación $t_{\text{kick}} \in [s+25, \min(e_f, s+380)]$ (no el final de la etiqueta, que puede estar 35 s después); los `Kick Off` post-gol se resuelven como el opuesto al equipo anotador. Analizando la aceleración direccional del receptor y la proximidad física, resuelve deterministamente las 36 fases:
+- **18 intervalos** a favor del FC Barcelona (Local)
+- **18 intervalos** a favor del Athletic Club (Visitante)
 
 #### Primitiva 2: Arbitraje de Conflicto Etiqueta vs. Cinemática
 El Smart Tagging presenta una inercia de $1\text{ a }3\text{ segundos}$. Cuando ocurre un robo imprevisto, la etiqueta mantiene al equipo anterior mientras los datos cinemáticos confirman que el rival ya controla el balón.  
-La Primitiva 2 detecta este conflicto mediante entropía normalizada de Shannon $H(p)$ cuando $|\text{st\_team\_bias}| > 0.3$, el balón es visible, el rival está a $< 1.45\text{m}$ y $|\text{nearest\_team\_adv}| > 2.0\text{m}$ se opone a la etiqueta: en **3,760 cuadros evaluados** (`3,788` en el partido completo), traslada el peso hacia la evidencia física inmediata ($0.72 \to 0.95$), reduciendo la latencia de detección a tan solo **$+0.4$ cuadros ($\sim 16\text{ ms}$)**.
+La Primitiva 2 detecta este conflicto mediante entropía normalizada de Shannon $H(p)$ cuando $|\text{st\_team\_bias}| > 0.3$, el balón es visible, el rival está a $< 1.45\text{m}$ y $|\text{nearest\_team\_adv}| > 2.0\text{m}$ se opone a la etiqueta: en **8,087 cuadros evaluados** (`8,115` en el partido completo), traslada el peso hacia la evidencia física inmediata ($0.72 \to 0.95$), reduciendo la latencia de detección a **$-0.8$ cuadros ($\sim 32\text{ ms}$)**. La evidencia sostenida de robo en ventana corta se arbitra del mismo modo.
 
 #### Primitiva 3: Amortiguación de Puentes en Oclusión
 Durante los cuadros sin balón ($40.7\%$), la Primitiva 3 verifica si el jugador poseedor anterior y posterior a la pérdida visual pertenecen al mismo equipo ($\text{gap} \le 90$ cuadros). En caso afirmativo, aplica un refuerzo de log-odds acotado ($\Delta \text{logit} = \pm 1.2$) e interpolación monótona ($w = 0.65$) en transiciones entre equipos opuestos, impidiendo cambios de posesión ficticios en pases aéreos y despejes.
@@ -127,7 +127,7 @@ Tras córners, faltas o saques de puerta, las probabilidades de balón muerto su
 
 El reglamento exige reproducibilidad, transparencia y código abierto verificable:
 - **Cero Llamadas a APIs Externas:** `src/jev_system_one.py` opera de forma 100% local en NumPy/pandas, sin depender de servicios en la nube ni claves privadas.
-- **Reproducibilidad Bit a Bit:** La ejecución de `auto_process_competition.py` reproduce exactamente el archivo `submission.csv` con el hash MD5 `24d98e599e9f5a35cec7f24dc92b8740`.
+- **Reproducibilidad Bit a Bit:** La ejecución de `auto_process_competition.py` reproduce exactamente el archivo `submission.csv` con el hash MD5 `f9507f09200e235665c5c988c6a1504e`.
 - **Protección de Datos:** Los archivos de tracking y payloads derivados están excluidos del repositorio público mediante `.gitignore`.
 
 ---
@@ -136,7 +136,7 @@ El reglamento exige reproducibilidad, transparencia y código abierto verificabl
 
 Para erradicar el parpadeo cuadro a cuadro, `src/mtah_decoder.py` implementa un modelo de Markov oculto con transiciones calibradas:
 - **Penalización por Cambio ($p_{\text{turnover}} = -4.2$):** Exige evidencia sostenida antes de cambiar de dueño.
-- **Filtro de Desvío no Controlado (< 22 cuadros = 0.88s):** Contactos efímeros de un rival ($A \to B \to A$) se consideran roces o rebotes y se absorben en la racha del equipo poseedor.
+- **Filtro de Desvío no Controlado (< 28 cuadros = 1.12s):** Contactos efímeros de un rival ($A \to B \to A$) se consideran roces o rebotes y se absorben en la racha del equipo poseedor.
 - **Supresión de Parpadeos en Detenciones (< 30 cuadros = 1.20s):** Elimina falsas activaciones de juego vivo dentro de balones muertos.
 - **Estrategia de Abstención (`X`):** Dado que en los cuadros evaluados `X` penaliza como fallo, asignamos `X` **estrictamente a los 40,462 cuadros no evaluados** (descanso, previo y post-partido), con una tasa de abstención del **0.00%** en tiempo de juego reglamentario.
 
@@ -152,14 +152,14 @@ Para erradicar el parpadeo cuadro a cuadro, `src/mtah_decoder.py` implementa un 
 1. **Homografía y Tracking de Retransmisión (`BAR-ATH_broadcast_atd.txt`):**
    - *Motivo:* Posee solo 164,488 cuadros, cortes de plano y un **34.2% de homografía inválida** en primeros planos. Su inclusión generaba desalineación temporal sin aportar valor sobre el tracking táctico continuo.
 2. **Decodificación de Video MP4 Crudo (`BAR-ATH_tactical.mp4`):**
-   - *Motivo:* Modelos pesados de visión por computadora requieren horas de cómputo en GPU y añaden variabilidad no determinista. Nuestro extractor cinemático en CPU procesa los 199,319 cuadros en **11.2 segundos**, haciendo redundante el video.
+   - *Motivo:* Modelos pesados de visión por computadora requieren horas de cómputo en GPU y añaden variabilidad no determinista. Nuestro extractor cinemático en CPU procesa los 199,319 cuadros en **16.5 segundos**, haciendo redundante el video.
 
 ---
 
 ## Sección 3: Reglas de Posesión Implementadas (`CHALLENGE.md`)
 
 1. **Pases en Vuelo y Balones Sueltos:** El "Escudo de Pase Activo" congela la posesión al equipo pasador mientras el balón viaja a alta velocidad ($v \ge 4.5\text{ m/s}$), impidiendo que defensores cercanos intercepten virtualmente el pase.
-2. **Toques no Controlados:** Se absorben desvíos menores a $0.88\text{ segundos}$ ($22\text{ cuadros}$).
+2. **Toques no Controlados:** Se absorben desvíos menores a $1.12\text{ segundos}$ ($28\text{ cuadros}$).
 3. **Disputas Divididas:** Jev AI analiza los diferenciales cinemáticos y la coherencia de racha en balones a menos de $2.8\text{m}$.
 4. **Detenciones y Balón Parado:** Todo saque de banda, córner o falta fuerza el estado $D$ hasta el golpeo de reanudación.
 5. **Abstenciones en Descanso:** Se asigna `X` a los cuadros antes del saque inicial ($0 \dots 11,184$), entretiempo ($90,652 \dots 110,807$) y tras el pitido final ($190,198 \dots 199,318$).
@@ -175,21 +175,45 @@ Para demostrar la contribución concreta de cada componente arquitectónico, eva
 #### Tabla 4.1: Validación Cruzada OOF Libre de Fuga (5 Pliegues)
 | Configuración | Etapa de Diagnóstico | macroF1 | spellF1 | F1 Local | F1 Visitante | F1 Muerto | Precisión Vivo |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| Motor Base (Sin Jev AI) | Probabilidades CV Crudas | 0.8292 | — | 0.8447 | 0.8353 | 0.8076 | 85.04% |
-| **Motor + Jev AI (System One)** | **Probabilidades CV Crudas** | **0.8317** | — | **0.8468** | **0.8363** | **0.8122** | **85.28%** |
-| Motor Base (Sin Jev AI) | Benchmark OOF Decodificado | 0.8948 | 0.4857 | 0.8881 | 0.8793 | 0.9170 | 88.86% |
-| **Motor + Jev AI (System One)** | **Benchmark OOF Decodificado** | **0.8946** | **0.4857** | **0.8878** | **0.8790** | **0.9170** | **88.82%** |
+| Motor Base (Sin Jev AI) | Probabilidades CV Crudas | 0.8884 | — | — | — | 0.8960 | 88.66% |
+| **Motor + Jev AI (System One)** | **Probabilidades CV Crudas** | **0.8929** | — | — | — | **0.9015** | **89.11%** |
+| Motor Base (Sin Jev AI) | Benchmark OOF Decodificado | 0.9133 | 0.5846 | 0.9318 | 0.8915 | 0.9166 | 91.59% |
+| **Motor + Jev AI (System One)** | **Benchmark OOF Decodificado** | **0.9156** | **0.6714** | **0.9336** | **0.8965** | **0.9166** | **91.89%** |
 
-*Jev AI aporta ganancias consistentes en probabilidades crudas sobre pliegues no vistos: `+0.0026` Macro F1, `+0.0046` F1 Balón Parado (D), y `+0.24%` en precisión de duelos en vivo.*
+*Jev AI aporta ganancias consistentes en pliegues no vistos: `+0.0868` spellF1, `+0.0023` macroF1 (decodificado), `+0.0044` macroF1 / `+0.0055` F1 D / `+0.45%` precisión en vivo (probabilidades crudas).*
 
 #### Tabla 4.2: Ablación en Tablero Oficial Público (7,500 cuadros)
 | Configuración | spellF1 | macroF1 | F1 Local | F1 Visitante | F1 Muerto | Posesiones | Cambios | Latencia |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | 1. Jugador Más Cercano (`baseline_raw`) | 0.0378 | 0.5972 | 0.7290 | 0.6430 | 0.4197 | 131 | 125 | -3.1c |
 | 2. Suavizado Móvil (`baseline_smooth50`) | 0.3256 | 0.6207 | 0.7781 | 0.7615 | 0.3225 | 26 | 38 | +4.0c |
-| 3. GBDT Simple Cabeza 2 (Sin Prior) | 0.4812 | 0.6940 | 0.8120 | 0.8015 | 0.0000 | 28 | 32 | +3.5c |
-| 4. Arquitectura Factorizada + Viterbi (Sin Jev AI) | 0.8353 | 0.8895 | 0.9357 | 0.9606 | 0.7721 | 17 | 12 | +0.3c |
-| **5. Pipeline Completo + Jev AI (Entrega Oficial)** | **0.8353** | **0.8896** | **0.9357** | **0.9609** | **0.7721** | **17** | **12** | **+0.4c** |
+| 3. Arquitectura Factorizada + Viterbi (Sin Jev AI) | 0.9125 | 0.9805 | — | — | 0.9710 | 15 | — | -0.75c |
+| **4. Pipeline Completo + Jev AI (Entrega Oficial)** | **0.9000** | **0.9772** | **0.9876** | **0.9731** | **0.9710** | **15** | **18** | **-0.8c** |
+
+- **Calibración Epistémica Jev AI System One:** Eleva el spellF1 fuera de muestra en `+0.0868` (0.5846 → 0.6714), el macroF1 en `+0.0023`, el F1 D en probabilidades crudas en `+0.0055` y la precisión en vivo en `+0.45%`, arbitra 8,087 cuadros de conflicto etiqueta-vs-física y resuelve las 36 fases N/A (26,500 cuadros).
+- **Salvedad honesta (ventana pública, en muestra):** allí el Motor Base puntúa marginalmente más que Motor + Jev (spellF1 `0.9125` vs. `0.9000`, macroF1 `0.9805` vs. `0.9772`) porque Jev cambia a Visitante `32` cuadros (1.28 s, cuadros 13,672..13,703) antes del robo real en 13,704. No ajustamos deliberadamente una regla a ese único evento: los pliegues OOF (datos no vistos) favorecen a Jev, y ese es el criterio relevante para el 95.3% privado del partido.
+
+#### 4.1.1 Mejoras Matemáticas de la Versión 2.0 (Antes → Después, mismo decodificador de producción)
+
+| Métrica | v1 (anterior) | **v2 (actual)** | Δ |
+|---|:---:|:---:|:---:|
+| spellF1 OOF 5 pliegues | 0.3412 | **0.6714** | +0.3302 |
+| macroF1 OOF 5 pliegues | 0.8359 | **0.9156** | +0.0797 |
+| F1 Clase D OOF 5 pliegues | 0.8076 | **0.9166** | +0.1090 |
+| spellF1 ventana pública (en muestra) | 0.8353 | **0.9000** | +0.0647 |
+| macroF1 ventana pública (en muestra) | 0.8896 | **0.9772** | +0.0876 |
+| F1 Clase D ventana pública (en muestra) | 0.7721 | **0.9710** | +0.1989 |
+| Cuadros de festejo post-gol etiquetados `D` (13,733) | — | **100.0%** | — |
+| Reparto H / A / D del partido evaluado | — | **31.8% / 21.8% / 46.4%** | 56.8 min de balón vivo |
+
+Mejoras que explican la ganancia:
+1. **Velocidad cinemática uniforme del balón** (`src/mtah_features.py`): diferencia finita a 25 Hz en los 199,319 cuadros. La velocidad reportada era 100% `NaN` en los cuadros `0..54,834`, lo que desactivaba en silencio todas las variables de velocidad en la ventana pública.
+2. **Ball-dropout 35% → 45%** con ventanas de velocidad del balón (`w15/w35/w75`) puestas a cero en filas vivas descartadas y muestreo realista de huecos de oclusión, evitando el atajo `velocidad_balón == 0 ⇒ D`; recentrado de logit `-1.20`.
+3. **`nearest_team_adv` atenuado por proximidad**, para que un balón rodando en espacio vacío no genere sesgo de control.
+4. **Resolución N/A en el cuadro físico de reanudación** `t_kick ∈ [s+25, min(e_f, s+380)]` (saques de banda) y `Kick Off` post-gol resuelto como el opuesto al equipo anotador.
+5. **`oob_to_kick_mask` y `post_goal_mask`**: continuidad fuera-de-banda → golpeo de reanudación y festejo post-gol forzados a `D`.
+6. **Conflicto sostenido etiqueta-vs-física** (evidencia de robo en ventana corta, con oclusión `ball_gap_len >= 50` para el lado Local) además del conflicto instantáneo por toque.
+7. **Decodificador** (`src/mtah_decoder.py`): filtro de desvío `22 → 28` cuadros (1.12 s), absorción de cambios cortos junto a `D` (`< 28` cuadros, `< 68` con sesgo de etiqueta opuesto) y corrección de frontera inicial. La precisión de rachas en el benchmark OOF es 100% (11/11 rachas predichas son aciertos).
 
 ### 4.2 Limitaciones y Trabajo Futuro
 1. **Duelos Aéreos (Eje Z):** El tracking proporciona coordenadas 2D. Aunque nuestro modelo de elevación cinemática calcula arcos parabólicos para la visualización 3D, incorporar homografía monocular para estimar la altura física del balón refinaría las disputas por alto.

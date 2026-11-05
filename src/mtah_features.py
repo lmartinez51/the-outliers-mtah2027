@@ -392,8 +392,27 @@ def extract_streaming_atd(
                     if na > 2:
                         d_a3[idx] = a_dists[2][0]
 
-    # Nearest team advantage: positive -> Home closer, negative -> Away closer
-    nearest_team_adv = np.where(ball_valid == 1.0, d_a1 - d_h1, np.nan).astype(np.float32)
+    # Uniform kinematic ball speed (25 Hz finite difference) across all 199,319 frames,
+    # solving the 100% NaN reported ball speed in the first 54,835 frames (including public window).
+    vx_ball = np.diff(ball_x_m, prepend=ball_x_m[0]) * 25.0
+    vy_ball = np.diff(ball_y_m, prepend=ball_y_m[0]) * 25.0
+    v_ball_kin = np.hypot(vx_ball, vy_ball).astype(np.float32)
+    invalid_v = (ball_valid == 0.0) | (np.roll(ball_valid, 1) == 0.0) | (v_ball_kin > 38.0)
+    v_ball_kin[invalid_v] = np.nan
+    ball_speed_reported = v_ball_kin
+
+    # Proximity-attenuated nearest team advantage:
+    # Attenuates raw distance difference when the ball is in open space (min(d_h1, d_a1) > 1.8m)
+    # so dead-ball rolling or long clearances in empty space do not create artificial control bias.
+    d_min = np.minimum(d_h1, d_a1)
+    atten = np.exp(-np.maximum(0.0, d_min - 1.8) / 1.8)
+    raw_diff = np.clip(d_a1 - d_h1, -4.5, 4.5)
+    diff2 = np.clip(d_a2 - d_h2, -3.5, 3.5) * np.exp(
+        -np.maximum(0.0, np.minimum(d_h2, d_a2) - 2.5) / 2.5
+    )
+    nearest_team_adv = np.where(
+        ball_valid == 1.0, raw_diff * atten + 0.25 * diff2, np.nan
+    ).astype(np.float32)
 
     return {
         "ball_valid": ball_valid,
@@ -512,10 +531,20 @@ def compute_temporal_and_bridge_features(
         dist_ball_interp_away_centroid - dist_ball_interp_home_centroid
     ).astype(np.float32)
 
-    # 3. Pass / Touch Anchors & Bridges
+    # 3. Pass / Touch Anchors & Bridges (1.45m touch radius with clear separation margin)
     anchor_team = np.zeros(n_frames, dtype=np.float32)
-    h_touch = (ball_valid == 1.0) & (d_h1 <= 1.6) & (np.isnan(d_a1) | (d_h1 < d_a1))
-    a_touch = (ball_valid == 1.0) & (d_a1 <= 1.6) & (np.isnan(d_h1) | (d_a1 < d_h1))
+    h_touch = (
+        (ball_valid == 1.0)
+        & (d_h1 <= 1.45)
+        & (np.isnan(d_a1) | ((d_a1 - d_h1) >= 0.25) | (d_h1 <= 1.15))
+        & (np.isnan(d_a1) | (d_h1 < d_a1))
+    )
+    a_touch = (
+        (ball_valid == 1.0)
+        & (d_a1 <= 1.45)
+        & (np.isnan(d_h1) | ((d_h1 - d_a1) >= 0.25) | (d_a1 <= 1.15))
+        & (np.isnan(d_h1) | (d_a1 < d_h1))
+    )
     anchor_team[h_touch] = 1.0
     anchor_team[a_touch] = -1.0
 
@@ -611,7 +640,7 @@ def compute_temporal_and_bridge_features(
 
 def encode_smart_tagging(game: str = GAME, n_frames: int = 199319) -> Dict[str, np.ndarray]:
     """Maps Smart Tagging XML intervals into frame-level tactical signals."""
-    events = load_smart_tagging(game=game)
+    events = sorted(load_smart_tagging(game=game), key=lambda x: x["start_frame"])
 
     bias_sum = np.zeros(n_frames, dtype=np.float32)
     bias_count = np.zeros(n_frames, dtype=np.int32)
