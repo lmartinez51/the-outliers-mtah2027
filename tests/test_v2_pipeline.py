@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Verification test suite for v2 deterministic possession pipeline (Stage 2).
+"""Verification test suite for v2 deterministic possession pipeline (Stage 2B).
 
 Tests:
     1. GT firewall: Greps src/v2/ for forbidden strings.
@@ -8,7 +8,9 @@ Tests:
     4. Graded block boundaries: 'X' strictly outside graded blocks, 0 'X' inside.
     5. Cache firewall: Confirms no read of probability cache or v1 CSV files.
     6. Official format validator: validate_submission.py passes with 'OK'.
-    7. Clean-clone test: Pipeline run in OS temp dir produces identical CSV SHA-256.
+    7. Clean-clone test: Starts with NO cache files, runs from raw tracking, reproduces SHA-256.
+    8. No legacy imports: v2 imports nothing from src.mtah_* or src.jev_*.
+    9. No v1 feature cache read: v2 code never references cache_bar_ath_*.
 """
 
 import glob
@@ -28,6 +30,8 @@ from src.v2.constants import (
     N_VIDEO_FRAMES,
 )
 from src.v2.run_v2 import execute_pipeline
+
+BASELINE_HASH = "89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2"
 
 
 class TestV2Pipeline(unittest.TestCase):
@@ -75,6 +79,11 @@ class TestV2Pipeline(unittest.TestCase):
                 self.primary_hash,
                 hash2,
                 f"Non-deterministic pipeline output: {self.primary_hash} != {hash2}",
+            )
+            self.assertEqual(
+                self.primary_hash,
+                BASELINE_HASH,
+                f"Hash deviated from baseline: {self.primary_hash} != {BASELINE_HASH}",
             )
         finally:
             if os.path.isfile(run2_path):
@@ -164,20 +173,13 @@ class TestV2Pipeline(unittest.TestCase):
         self.assertIn("OK    submission_v2.csv", proc.stdout)
         self.assertIn("Valid.", proc.stdout)
 
-    def test_07_clean_clone_reproducibility(self):
-        """Test 7: Clean-clone scratch copy run reproduces bit-for-bit identical CSV SHA-256."""
+    def test_07_clean_clone_no_cache_reproducibility(self):
+        """Test 7: Clean-clone scratch copy starts with NO cache files and reproduces baseline hash."""
         with tempfile.TemporaryDirectory() as scratch_dir:
-            # Copy source code and config
             shutil.copytree("src", os.path.join(scratch_dir, "src"))
-            shutil.copy("games.py", os.path.join(scratch_dir, "games.py"))
 
-            # Symlink or copy data read-only
+            # Provide ONLY raw tracking files (NO cache files under data/)
             scratch_data = os.path.join(scratch_dir, "data")
-            os.makedirs(scratch_data, exist_ok=True)
-            shutil.copy(
-                os.path.join("data", "cache_bar_ath_features.npz"),
-                os.path.join(scratch_data, "cache_bar_ath_features.npz"),
-            )
             scratch_tactical = os.path.join(scratch_data, "tactical")
             os.makedirs(scratch_tactical, exist_ok=True)
             shutil.copy(
@@ -189,7 +191,10 @@ class TestV2Pipeline(unittest.TestCase):
                 os.path.join(scratch_tactical, "BAR-ATH_tactical_atd.xml"),
             )
 
-            clone_out = os.path.join(scratch_dir, "outputs_v2", "submission_clone.csv")
+            # Confirm no cache files exist in scratch_dir
+            found_caches = glob.glob(os.path.join(scratch_dir, "**", "*.npz"), recursive=True)
+            self.assertEqual(found_caches, [], "Scratch clone must start with zero .npz caches")
+
             cmd = [
                 sys.executable,
                 "-B",
@@ -217,10 +222,37 @@ class TestV2Pipeline(unittest.TestCase):
                 clone_hash = hashlib.sha256(f.read()).hexdigest()
 
             self.assertEqual(
-                self.primary_hash,
+                BASELINE_HASH,
                 clone_hash,
-                f"Clean-clone hash mismatch:\nPrimary: {self.primary_hash}\nClone:   {clone_hash}",
+                f"Clean-clone hash mismatch:\nBaseline: {BASELINE_HASH}\nClone:    {clone_hash}",
             )
+
+    def test_08_no_legacy_imports(self):
+        """Test 8: v2 files import nothing from src.mtah_* or src.jev_*."""
+        v2_files = glob.glob(os.path.join("src", "v2", "**", "*.py"), recursive=True)
+        violations = []
+        forbidden_modules = ["mtah_", "jev_", "starter", "evaluation"]
+        for fpath in v2_files:
+            with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                for idx, line in enumerate(f, start=1):
+                    if "import" in line:
+                        for mod in forbidden_modules:
+                            if mod in line:
+                                violations.append(f"{fpath}:{idx}: {line.strip()}")
+
+        self.assertEqual(violations, [], f"Forbidden legacy imports in v2:\n" + "\n".join(violations))
+
+    def test_09_no_v1_cache_read(self):
+        """Test 9: v2 files never reference cache_bar_ath_*."""
+        v2_files = glob.glob(os.path.join("src", "v2", "**", "*.py"), recursive=True)
+        violations = []
+        for fpath in v2_files:
+            with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                for idx, line in enumerate(f, start=1):
+                    if "cache_bar_ath" in line:
+                        violations.append(f"{fpath}:{idx}: {line.strip()}")
+
+        self.assertEqual(violations, [], f"References to cache_bar_ath in v2:\n" + "\n".join(violations))
 
 
 if __name__ == "__main__":

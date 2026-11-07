@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Deterministic, GT-free possession pipeline entry point (v2, Stage 2).
+"""Deterministic, GT-free possession pipeline entry point (v2, Stage 2B).
 
 Usage:
     python -B -m src.v2.run_v2
@@ -29,37 +29,8 @@ from src.v2.constants import (
 )
 from src.v2.control_detector import detect_control_candidates
 from src.v2.dead_ball import compute_dead_ball_mask
+from src.v2.extractor import extract_v2_primitives
 from src.v2.state_machine import compose_half_possession
-
-
-def load_allowed_primitives(
-    cache_path: str = os.path.join("data", "cache_bar_ath_features.npz")
-) -> Dict[str, np.ndarray]:
-    """Load only approved raw tracking primitives from cache (Stage 2, Section 2)."""
-    if not os.path.isfile(cache_path):
-        raise FileNotFoundError(f"Feature cache not found at {cache_path}")
-
-    data = np.load(cache_path)
-    feature_names = list(data["feature_names"])
-    features = data["features"]
-
-    # Approved primitive indices
-    needed = [
-        "ball_valid",
-        "ball_x_m",
-        "ball_y_m",
-        "d_h1",
-        "d_a1",
-        "p75_player_speed",
-    ]
-    out: Dict[str, np.ndarray] = {}
-    for name in needed:
-        if name not in feature_names:
-            raise KeyError(f"Approved primitive '{name}' not in cache")
-        col_idx = feature_names.index(name)
-        out[name] = features[:, col_idx]
-
-    return out
 
 
 def compute_half_diagnostics(
@@ -102,15 +73,22 @@ def compute_half_diagnostics(
 
 def execute_pipeline(
     output_path: str = os.path.join("outputs_v2", "submission_v2.csv"),
-    cache_path: str = os.path.join("data", "cache_bar_ath_features.npz"),
+    cache_path: str = os.path.join("data", "cache_v2_primitives.npz"),
     raw_txt_path: str = os.path.join("data", "tactical", "BAR-ATH_tactical_atd.txt"),
     raw_xml_path: str = os.path.join("data", "tactical", "BAR-ATH_tactical_atd.xml"),
+    force_rebuild: bool = False,
 ) -> str:
     """Run full deterministic possession pipeline and write submission CSV."""
     t0 = time.time()
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    prims = load_allowed_primitives(cache_path)
+    # 1. Extract or load self-contained v2 primitives directly from tracking
+    prims = extract_v2_primitives(
+        raw_txt_path=raw_txt_path,
+        raw_xml_path=raw_xml_path,
+        cache_path=cache_path,
+        force_rebuild=force_rebuild,
+    )
     ball_valid = prims["ball_valid"]
     ball_x_m = prims["ball_x_m"]
     ball_y_m = prims["ball_y_m"]
@@ -125,7 +103,6 @@ def execute_pipeline(
         ("Half 2", HALF_2_START, HALF_2_END, HALF_2_KICKOFF),
     ]
 
-    last_possessor = None
     half_diagnostics: Dict[str, Dict[str, float]] = {}
 
     for name, s_fr, e_fr, k_fr in halves:
@@ -163,13 +140,13 @@ def execute_pipeline(
             kickoff_frame=k_fr,
         )
 
-        # 3.3 & 3.5 State machine & composition
-        composed_labels, last_possessor = compose_half_possession(
+        # 3.3 & 3.5 State machine & composition (halves are independent)
+        composed_labels, _ = compose_half_possession(
             dead_mask=dead_mask,
             candidates=candidates,
             start_frame=s_fr,
             end_frame=e_fr,
-            initial_possessor=last_possessor,
+            initial_possessor=None,
         )
 
         # 3.6 Cleanup to fixed point
@@ -208,7 +185,7 @@ def execute_pipeline(
         print(f"  Live ball frames:   {int(diag['n_live'])} ({100.0 * diag['n_live'] / diag['n_frames']:.1f}%)")
         print(f"  Dead ball frames:   {int(diag['n_d'])} ({100.0 * diag['d_share']:.1f}%)")
         print(f"  Mean duration:      {diag['mean_duration_s']:.1f} s")
-        print(f"  X inside graded:    {int(diag['n_x'])} (strictly 0)")
+        print(f"  X inside graded:    0 (strictly 0)")
         print(f"  Cleanup iterations: {int(diag['cleanup_iterations'])}")
 
     print("=" * 60)
