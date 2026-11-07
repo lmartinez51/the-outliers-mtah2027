@@ -1,3 +1,5 @@
+> **Aviso de estado (nov 2026).** Versiones anteriores de este repositorio ajustaron modelos y parámetros con la ventana pública de 5 minutos del ground truth. La aclaración de reglas de los organizadores (recibida en noviembre) no lo permite. Estamos rehaciendo la solución. Las métricas de documentos anteriores son en muestra y no deben leerse como resultados válidos; las afirmaciones de cumplimiento de RULES.md en esos documentos quedan retiradas hasta terminar el rediseño.
+
 # Guía de Inicio Rápido y Onboarding para el Equipo (Español)
 
 **Proyecto:** More than a Hack 2027 — FC Barcelona & Metrica Sports  
@@ -70,6 +72,8 @@ python auto_process_competition.py
 2. **Paso 2 (Modelos + Jev AI):** Entrena el detector de balón muerto y el estimador simétrico de posesión viva con primitivas epistémicas deterministas.
 3. **Paso 3 (Decodificación Viterbi):** Aplica programación dinámica para suprimir parpadeos falsos y genera `submission.csv` (`199,319` filas).
 4. **Paso 4 (Validación y Leaderboard):** Ejecuta `evaluation/validate_submission.py` y `evaluation/run_evaluation.py`, confirmando el **Puesto #1** en la tabla oficial (`spellF1 = 0.9000`).
+> ⚠️ *Cifras en muestra / fuera de muestra: no son un resultado válido. Ver el Aviso de estado al inicio de este documento.*
+
 5. **Paso 5 (Visor 3D):** Compila el archivo autocontenido `barca_3d_interactive_replay.html` para inspección visual inmediata.
 
 ---
@@ -200,6 +204,8 @@ El resultado esperado en consola debe ser:
 - **Spell F1:** `0.9000`
 - **Macro F1:** `0.9772`
 - **Posesiones:** `15` (de 17 en el Ground Truth público, 100% de precisión de rachas)
+> ⚠️ *Cifras en muestra / fuera de muestra: no son un resultado válido. Ver el Aviso de estado al inicio de este documento.*
+
 - **Abstenciones en juego evaluado:** `0 cuadros (0.00%)`
 
 ¡Cualquier duda o ajuste, comunícate con Lorenzo Martinez en el canal del equipo!

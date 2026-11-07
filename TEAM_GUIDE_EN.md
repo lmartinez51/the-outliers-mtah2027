@@ -1,3 +1,5 @@
+> **Status notice (Nov 2026).** Earlier versions of this repository fitted models and parameters using the public 5-minute ground-truth window. The organizers' clarification of the rules (received in November) does not allow this. We are reworking the submission. Metrics shown in earlier documents are in-sample and must not be read as valid results, and statements of compliance with RULES.md in those documents are withdrawn until the rework is complete.
+
 # Team Onboarding & Quickstart Guide (English)
 
 **Project:** More than a Hack 2027 — FC Barcelona & Metrica Sports  
@@ -70,6 +72,8 @@ python auto_process_competition.py
 2. **Step 2 (Probabilistic Models + Jev AI):** Fits the Occlusion-Robust Dead-Ball Detector (Head 1) and Mathematically Team-Symmetric Live Possession Model (Head 2) with deterministic Jev AI (`System One`) epistemic arbitration primitives.
 3. **Step 3 (3-State Soft Viterbi Decoding):** Eliminates transient flickers and generates `submission.csv` (`199,319` frames).
 4. **Step 4 (Official Validation & Leaderboard):** Executes `evaluation/validate_submission.py` and `evaluation/run_evaluation.py`, confirming **Rank #1** on the public scoreboard (`spellF1 = 0.9000`).
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
+
 5. **Step 5 (3D Replay Generation):** Compiles the standalone, zero-dependency `barca_3d_interactive_replay.html` viewer.
 
 ---
@@ -200,6 +204,8 @@ Expected terminal output:
 - **Spell F1:** `0.9000`
 - **Macro F1:** `0.9772`
 - **Possessions:** `15` (of 17 in the public ground truth, 100% spell precision)
+> ⚠️ *In-sample / out-of-fold figures: not a valid result. See the Status notice at the top of this document.*
+
 - **Abstentions on Graded Frames:** `0 frames (0.00%)`
 
 For questions or suggestions, please contact Lorenzo Martinez on the team channel!
