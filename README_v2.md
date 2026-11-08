@@ -7,7 +7,7 @@ Official documentation for the v2 submission architecture developed by **Team Th
 ## 1. Compliance Statement & Design Principles
 
 Following the organizers' clarification of the challenge rules:
-1. **Zero Ground-Truth Exposure:** No component of v2 reads, was trained on, or was selected using ground-truth possession data or the provided video. The team's earlier v1 work did use the public 5-minute ground-truth window (see the Status notice in README.md). The v2 constants were fixed before v2 was first run on the match and were not selected by optimizing any metric.
+1. **No ground-truth dependence:** No component of v2 reads, was trained on, or was selected using ground-truth possession data or the provided video. The team's earlier v1 work did use the public 5-minute ground-truth window (see the Status notice in README.md). The v2 constants were fixed before v2 was first run on the match and were not selected by optimizing any metric.
 2. **Complete Algorithmic Determinism:** The solution contains zero random seeds, zero neural weights, zero GBDT estimators, zero network requests, and no parameter search or metric-based selection was performed for v2.
 3. **A Priori Frozen Constants:** Every numerical threshold was specified before running the pipeline on the match data, grounded in physical, optical, and biomechanical domain reasoning (documented in [`CONSTANTS.md`](CONSTANTS.md)).
 4. **Isolated Output Directory:** v2 outputs exclusively to `outputs_v2/submission_v2.csv`, leaving all v1 legacy artifacts untouched.
@@ -67,7 +67,7 @@ The v2 pipeline operates offline per half (`11,185..90,651` and `110,808..190,19
 ## 3. Quickstart & Execution
 
 ### Prerequisites
-- Tested and executed with **Python 3.12.0** and **NumPy 2.2.6**.
+- Tested and executed with **Python 3.12.0** (`.venv\Scripts\python.exe`) and **NumPy 2.2.6**.
 
 ### Run the Pipeline
 ```bash
@@ -148,5 +148,4 @@ Synthetic tests verifying all algorithmic rules on small deterministic arrays wi
 3. **Ball Tracking Gaps & Occlusions:** The ball position is unknown on **40.65% of graded frames** (94,287 / 158,857 known; 64,570 unknown). Over these missing-ball intervals, the collective stoppage detector relies exclusively on the 75th percentile of player speeds.
 4. **Dominance of Collective Stoppage:** The collective stop rule accounts for **44,637 of the 49,291 union dead-ball frames** (~90.6% of dead-ball frames; 28.1% of graded match time).
 5. **A Priori Constants:** All Tier B constants are a priori values reasoned from domain physics and rules definitions; they have not yet been tuned or validated on external datasets.
-6. **Player Speed Units:** Documented in [`DATA.md:85`](DATA.md) as position and speed in **m/s** (`"position, and speed in m/s"`), verified by empirical aggregates across graded frames (median 1.41 m/s, p90 3.85 m/s, max 9.43 m/s), despite vendor XML metadata template carrying `<Unit>kph</Unit>` ([`BAR-ATH_tactical_atd.xml:1136`](data/tactical/BAR-ATH_tactical_atd.xml)).
-7. **Ball-at-(0, 0) Convention:** Verification status: `NOT VERIFIED` in official documentation. Official docs ([`DATA.md:115`](DATA.md)) state that missing observations are `NaN`. The origin check `(x, y) != (0, 0)` is retained purely as a defensive engineering check against sentinel values used in certain EPTS exports.
+6. **Player Speed Units:** Documented in [`DATA.md:84-85`](DATA.md) as position and speed in **m/s** (`"position, and speed in m/s"`), verified by empirical aggregates across graded frames (median 1.41 m/s, p90 3.85 m/s, max 9.43 m/s), despite vendor XML metadata template carrying `<Unit>kph</Unit>` ([`BAR-ATH_tactical_atd.xml:1136`](data/tactical/BAR-ATH_tactical_atd.xml)).

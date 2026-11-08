@@ -10,18 +10,18 @@ In accordance with the organizers' rules clarification, **no constant in this ta
 
 | ID | Value | Tier | Origin / Official Citation | Written A Priori Rationale | Introduction Date |
 |---|---|:---:|---|---|:---:|
-| `FPS` | `25` | **F** | [DATA.md:245](DATA.md) ("`round(seconds * 25)` is a video frame") | Fixed sampling rate of tactical video and optical tracking. | 2026-11-07 |
-| `PITCH_LENGTH` | `105.3 m` | **F** | `games.py:GAMES["BAR-ATH"]["pitch"]`, [DATA.md:93](DATA.md) | Field length measured from homography-corrected tracking coordinates (XML metadata reports 105 m; DATA.md:93-94 explains 105.3 m reflects true tracking coordinates). | 2026-11-07 |
-| `PITCH_WIDTH` | `68.0 m` | **F** | `games.py:GAMES["BAR-ATH"]["pitch"]`, [DATA.md:93](DATA.md) | Field width measured from homography-corrected tracking coordinates (matches XML metadata 68 m). | 2026-11-07 |
+| `FPS` | `25` | **F** | [DATA.md:163-164](DATA.md) ("`round(seconds * 25)` is a video frame") | Fixed sampling rate of tactical video and optical tracking. | 2026-11-07 |
+| `PITCH_LENGTH` | `105.3 m` | **F** | `games.py:GAMES["BAR-ATH"]["pitch"]`, [DATA.md:93-94](DATA.md) ("The metadata reports 105 × 68 m; `games.py` carries 105.3 × 68.0, measured from the corrected tracking.") | Field length measured from the corrected tracking. | 2026-11-07 |
+| `PITCH_WIDTH` | `68.0 m` | **F** | `games.py:GAMES["BAR-ATH"]["pitch"]`, [DATA.md:93-94](DATA.md) ("The metadata reports 105 × 68 m; `games.py` carries 105.3 × 68.0, measured from the corrected tracking.") | Field width measured from the corrected tracking. | 2026-11-07 |
 | `HALF_1_START` | `11,185` | **F** | [DATA.md:256](DATA.md), [FAQ.md:30](FAQ.md) | Official first graded frame of First Half. | 2026-11-07 |
 | `HALF_1_END` | `90,651` | **F** | [DATA.md:256](DATA.md), [FAQ.md:30](FAQ.md) | Official last graded frame of First Half. | 2026-11-07 |
-| `HALF_1_KICKOFF` | `11,185` | **F** | [FAQ.md:34-35](FAQ.md) ("first half ... graded from the kickoff itself") | Match kickoff instant for First Half. | 2026-11-07 |
+| `HALF_1_KICKOFF` | `11,185` | **F** | [FAQ.md:34-35](FAQ.md) ("first half, by contrast, is graded from the kickoff itself") | Match kickoff instant for First Half. | 2026-11-07 |
 | `HALF_2_START` | `110,808` | **F** | [DATA.md:258](DATA.md), [FAQ.md:30](FAQ.md) | Official first graded frame of Second Half. | 2026-11-07 |
 | `HALF_2_END` | `190,197` | **F** | [DATA.md:258](DATA.md), [FAQ.md:30](FAQ.md) | Official last graded frame of Second Half. | 2026-11-07 |
 | `HALF_2_KICKOFF` | `113,742` | **F** | [FAQ.md:33-34](FAQ.md) ("does not kick off until **113,742**") | Published Second Half kickoff frame. | 2026-11-07 |
 | `N_VIDEO_FRAMES` | `199,319` | **F** | [DATA.md:246](DATA.md), `games.py` | Total video frames in `BAR-ATH`. | 2026-11-07 |
 | `R_TOUCH` | `2.0 m` | **B** | Team decision, 2026-11-07, before the first v2 run | Maximum physical reach of a player plus automatic optical tracking position error ($\sim 0.5\text{--}1.0\text{ m}$). | 2026-11-07 |
-| `MARGIN` | `0.5 m` | **B** | Team decision, 2026-11-07, before the first v2 run | Minimum separation required between the nearest player and opponent before declaring unambiguous control candidate. | 2026-11-07 |
+| `MARGIN` | `0.5 m` | **B** | Team decision, 2026-11-07, before the first v2 run | Minimum separation required between the nearest player and opponent before declaring control candidate. | 2026-11-07 |
 | `G_INTERP` | `50 frames` (2.0 s) | **B** | Team decision, 2026-11-07, before the first v2 run | Typical flight time of a pass; gaps $\le 2\text{ s}$ represent temporary tracking occlusions during active play. | 2026-11-07 |
 | `T_CONFIRM` | `50 frames` (2.0 s) | **B** | [CHALLENGE.md:73](CHALLENGE.md) ("a player keeps the ball for a few seconds") | Minimum duration required for opponent to demonstrate controlled possession before confirming turnover. | 2026-11-07 |
 | `OOB_MARGIN` | `1.0 m` | **B** | Team decision, 2026-11-07, before the first v2 run | Buffer beyond touchlines/by-lines to absorb homography projection inaccuracies and ball radius. | 2026-11-07 |
@@ -44,14 +44,11 @@ In accordance with the organizers' rules clarification, **no constant in this ta
      valid_speeds.sort()
      p75_player_speed[idx] = valid_speeds[int(0.75 * (len(valid_speeds) - 1))]
      ```
-2. **Ball Origin Sentinel Convention:**
-   - A ball coordinate `(x, y) == (0.0, 0.0)` is treated as untracked (`ball_known = False`).
-   - *Status:* `NOT VERIFIED` in official documentation (which notes missing observations are `NaN` in `DATA.md:115`), implemented defensively against origin sentinels.
-3. **Ball Velocity Uncomputability Skip:**
+2. **Ball Velocity Uncomputability Skip:**
    - In `dead_ball.py:128-130`, when evaluating centered ball velocity over $[f - 12, f + 12]$, if either endpoint is missing / unknown, the ball condition is skipped (`ball_is_stopped = True`), allowing the stoppage detector to evaluate based on collective player speed alone.
-4. **Pitch Dimensions Source:**
+3. **Pitch Dimensions Source:**
    - Dimensions used: $105.3\text{ m} \times 68.0\text{ m}$ from `games.py:GAMES["BAR-ATH"]["pitch"]`.
-   - The XML metadata header reports canonical dimensions $105.0\text{ m} \times 68.0\text{ m}$ ([`BAR-ATH_tactical_atd.xml:68-69`](data/tactical/BAR-ATH_tactical_atd.xml)). As documented in [`DATA.md:93-94`](DATA.md): *"The metadata reports 105 × 68 m; games.py carries 105.3 × 68.0, measured from the corrected tracking."*
+   - The XML metadata header reports canonical dimensions $105.0\text{ m} \times 68.0\text{ m}$ ([`BAR-ATH_tactical_atd.xml:68-69`](data/tactical/BAR-ATH_tactical_atd.xml)). As documented in [`DATA.md:93-94`](DATA.md): *"The metadata reports 105 × 68 m; `games.py` carries 105.3 × 68.0, measured from the corrected tracking."*
 
 ---
 
