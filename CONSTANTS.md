@@ -1,4 +1,4 @@
-# Constants Registry & A Priori Rationale (v2 Pipeline)
+# Constants Registry & A Priori Rationale (v2 & v2.1 Pipeline)
 
 This registry records all constants utilized in the deterministic, ground-truth-free v2 possession tracking pipeline (`src/v2/`).
 
@@ -6,7 +6,7 @@ In accordance with the organizers' rules clarification, **no constant in this ta
 
 ---
 
-## 1. Frozen Constants Table
+## 1. Frozen Baseline Constants Table (v2.0.1-apriori)
 
 | ID | Value | Tier | Origin / Official Citation | Written A Priori Rationale | Introduction Date |
 |---|---|:---:|---|---|:---:|
@@ -35,7 +35,24 @@ In accordance with the organizers' rules clarification, **no constant in this ta
 
 ---
 
-## 2. Additional Algorithmic Conventions & Formulas
+## 2. Externally Tuned Constants (v2.1-external)
+
+Under the Stage 3 tuning protocol, Tier B possession constants were tuned on external tracking data from SkillCorner open data (MIT license), completely disjoint from the provided fixture (`BAR-ATH`).
+
+- **Origin:** External tuning, SkillCorner open data, MIT license, 2026-11-09, commit `65b5830` (A-League 2024/2025; 11 tuning matches, 8 hold-out matches).
+- **Adoption Criteria:** Paired difference bootstrap over 8 hold-out matches ($B = 10,000$ draws, seed 42): $\bar{\Delta} = +0.023947$, $95\%\text{ CI} = [+0.007967, +0.039078]$. Since $\bar{\Delta} > 0$ and $CI_{\text{low}} > 0$, the candidate configuration was **mechanically adopted**.
+
+| Constant | Adopted Value (Physical) | Adopted Value (Frames @ 25 fps) | Previous A Priori Value | Written Empirical & Physical Rationale |
+|---|:---:|:---:|:---:|---|
+| `R_TOUCH` | `2.5 m` | N/A (meters) | `2.0 m` | Accommodates wider optical tracking sensor dispersion for lunging/extended player reaches. |
+| `MARGIN` | `0.75 m` | N/A (meters) | `0.50 m` | Stronger contested-ball rejection threshold; reduces false-positive turnovers during 50-50 duels. |
+| `T_CONFIRM` | `1.2 s` | `30 frames` | `50 frames` (2.0 s) | Faster turnover confirmation; matches typical duration of controlled second-touch receptions. |
+| `G_INTERP` | `1.2 s` | `30 frames` | `50 frames` (2.0 s) | Shorter interpolation horizon avoids bridging across actual turnovers during loose ball episodes. |
+| `MIN_LIVE_FLICKER` | `1.0 s` | `25 frames` | `25 frames` (1.0 s) | Kept *a priori* per Amendment 1 (cleanup rules suspended during external evaluation). |
+
+---
+
+## 3. Additional Algorithmic Conventions & Formulas
 
 1. **Player Speed Percentile (`p75`):**
    - Percentile value: `0.75` (75th percentile of active, non-NaN player speeds).
@@ -52,7 +69,7 @@ In accordance with the organizers' rules clarification, **no constant in this ta
 
 ---
 
-## 3. Classification Tiers
+## 4. Classification Tiers
 
 - **Tier F (Fixed):** Non-tunable constants determined strictly by competition definition, data geometry, or official documentation.
-- **Tier B (A Priori Engineering Prior):** Values established a priori based on physical and biomechanical principles of football. In a future optional stage, these constants are designated as eligible candidates for hyperparameter tuning strictly on **external** tracking datasets.
+- **Tier B (Engineering Constants):** Parameters governing physical control candidates, turnover confirmation, and interpolation. Tuned strictly on external open tracking data.

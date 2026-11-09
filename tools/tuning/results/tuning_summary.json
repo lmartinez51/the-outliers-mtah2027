@@ -1,0 +1,44 @@
+{
+  "theta0": {
+    "R_TOUCH": 2.0,
+    "MARGIN": 0.5,
+    "T_CONFIRM": 2.0,
+    "G_INTERP": 2.0,
+    "MIN_LIVE_FLICKER": 1.0
+  },
+  "best_theta": {
+    "R_TOUCH": 2.5,
+    "MARGIN": 0.75,
+    "T_CONFIRM": 1.2,
+    "G_INTERP": 1.2
+  },
+  "mean_tuning_theta0": 0.4895416914118225,
+  "best_tuning_mean_f1": 0.5215262143296916,
+  "mean_holdout_theta0": 0.4820935217829736,
+  "mean_holdout_thetastar": 0.5060402232426642,
+  "mean_paired_difference": 0.023946701459690654,
+  "bootstrap_ci_seed42": [
+    0.00796740292508389,
+    0.03907787864205656
+  ],
+  "bootstrap_ci_seed0": [
+    0.007877346361840093,
+    0.03902218128281455
+  ],
+  "bootstrap_ci_seed1": [
+    0.008005565923438858,
+    0.03889025322359995
+  ],
+  "adopted": true,
+  "aggregate_diagnostics_2a": {
+    "aggregate_out_of_play_share": 0.46517554751810963,
+    "aggregate_ball_detected_share": 0.9293934932064724,
+    "aggregate_candidate_share": 0.5229189632021863
+  },
+  "aggregate_diagnostics_2b": {
+    "aggregate_precision_d": 0.923693168420395,
+    "aggregate_recall_d": 0.8333815194444596,
+    "aggregate_f1_d": 0.8762163856951131
+  },
+  "runtime_seconds": 240.93572688102722
+}
