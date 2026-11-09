@@ -15,6 +15,7 @@ from src.v2.ball_tracker import build_ball_track
 from src.v2.cleanup import cleanup_half_labels
 from src.v2.constants import (
     FPS,
+    G_INTERP,
     HALF_1_END,
     HALF_1_KICKOFF,
     HALF_1_START,
@@ -25,7 +26,12 @@ from src.v2.constants import (
     LABEL_D,
     LABEL_H,
     LABEL_X,
+    MARGIN,
+    MIN_DEAD_FLICKER,
+    MIN_LIVE_FLICKER,
     N_VIDEO_FRAMES,
+    R_TOUCH,
+    T_CONFIRM,
 )
 from src.v2.control_detector import detect_control_candidates
 from src.v2.dead_ball import compute_dead_ball_mask
@@ -77,6 +83,13 @@ def execute_pipeline(
     raw_txt_path: str = os.path.join("data", "tactical", "BAR-ATH_tactical_atd.txt"),
     raw_xml_path: str = os.path.join("data", "tactical", "BAR-ATH_tactical_atd.xml"),
     force_rebuild: bool = False,
+    r_touch: float = R_TOUCH,
+    margin: float = MARGIN,
+    t_confirm: int = T_CONFIRM,
+    g_interp: int = G_INTERP,
+    min_live_flicker: int = MIN_LIVE_FLICKER,
+    min_dead_flicker: int = MIN_DEAD_FLICKER,
+    fps: int = FPS,
 ) -> str:
     """Run full deterministic possession pipeline and write submission CSV."""
     t0 = time.time()
@@ -113,6 +126,7 @@ def execute_pipeline(
             ball_y_m=ball_y_m,
             start_frame=s_fr,
             end_frame=e_fr,
+            g_interp=g_interp,
         )
 
         # 3.2 Control candidates
@@ -127,6 +141,8 @@ def execute_pipeline(
             end_frame=e_fr,
             raw_txt_path=raw_txt_path,
             raw_xml_path=raw_xml_path,
+            r_touch=r_touch,
+            margin=margin,
         )
 
         # 3.4 Dead ball mask
@@ -147,6 +163,7 @@ def execute_pipeline(
             start_frame=s_fr,
             end_frame=e_fr,
             initial_possessor=None,
+            t_confirm=t_confirm,
         )
 
         # 3.6 Cleanup to fixed point
@@ -154,10 +171,12 @@ def execute_pipeline(
             labels=composed_labels,
             start_frame=s_fr,
             end_frame=e_fr,
+            min_live_flicker=min_live_flicker,
+            min_dead_flicker=min_dead_flicker,
         )
 
         full_labels[s_fr : e_fr + 1] = cleaned_labels[s_fr : e_fr + 1]
-        half_diagnostics[name] = compute_half_diagnostics(full_labels, s_fr, e_fr)
+        half_diagnostics[name] = compute_half_diagnostics(full_labels, s_fr, e_fr, fps=fps)
         half_diagnostics[name]["cleanup_iterations"] = float(iterations)
 
     # 3.7 Write output CSV
