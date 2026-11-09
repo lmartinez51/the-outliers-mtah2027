@@ -176,3 +176,27 @@ Evaluate candidate $\theta^*$ and baseline $\theta_0$ on the 8 hold-out matches:
    - Candidate $\theta^*$ is adopted **as a whole** into `src/v2/` **IF AND ONLY IF**:
      $$\bar{\Delta} > 0 \quad \text{AND} \quad CI_{\text{low}} > 0$$
    - If $\bar{\Delta} \le 0$ or $CI_{\text{low}} \le 0$, the external evidence does not decisively support a change. The frozen *a priori* baseline constants strictly remain, and no changes are made to `src/v2/constants.py`.
+
+---
+
+## 10. Formal Amendments (Phase B Lock)
+
+### Amendment 1: Tuned Set & Cleanup Rule Suspension
+- **Parameter Scope:** `MIN_LIVE_FLICKER` is removed from the tuned constants and remains strictly *a priori* at $1.0\text{ s}$ (25 frames at 25 fps, 10 frames at 10 fps).
+  - *Reason:* The evaluation harness uses an oracle dead-ball mask (the exact phase-complement mask) with no synthetic flicker. Applying cleanup rule (i) would only convert genuine short live spells into dead ball, biasing `MIN_LIVE_FLICKER` toward its minimum value, which would not transfer reliably to BAR-ATH where the dead-ball mask is physical and noisy.
+  - *Evaluation Choice:* The external tuning harness executes with both post-processing cleanup rules (i) and (ii) disabled, evaluating the raw core tracker.
+  - *Tuned Grid:* The grid comprises $R_{\text{TOUCH}} \times \text{MARGIN} \times T_{\text{CONFIRM}} \times G_{\text{INTERP}} = 3^4 = 81$ configurations.
+  - *Baseline Assertion:* The $\theta_0$ assertion continues to verify all four tuned constants plus the fixed $1.0\text{ s}$ flicker threshold against `src/v2/constants.py`.
+  - *Adoption Rule:* Unchanged (all-or-nothing adoption over the 4 tuned constants).
+
+### Amendment 2: Report-Only Diagnostics (No Effect on Selection/Adoption)
+- **Diagnostic (a):** Report per-match and aggregate over all 20 matches:
+  1. Out-of-play share: share of period frames falling outside every phase interval.
+  2. Ball-detected share: share of in-phase frames where `ball_data.is_detected == True`.
+  3. Candidate share under $\theta_0$: share of in-phase frames where a possession candidate is declared under baseline parameters.
+- **Diagnostic (b):** Apply v2's *a priori* dead-ball mechanisms (out-of-bounds with $1.0\text{ m}$ margin, and collective stoppage at $1.5\text{ s}$ and $1.35\text{ m/s}$ with speeds computed as the $1\text{ s}$ centered displacement of detected players only, converted to 10 fps) to the 20 matches. Report agreement with the phase-complement mask: predicted vs. reference dead share, and frame-level precision, recall, and F1 for `D`. State clearly that nothing in this mechanism is tuned. If time does not permit, record NOT DONE.
+
+### Amendment 3: Hold-Out Bootstrap Random Seed
+- **Decision Seed:** The adoption decision strictly uses `seed = 42` with $B = 10,000$ draws.
+- **Robustness Check:** The bootstrap confidence interval is additionally computed and reported for `seed = 0` and `seed = 1` as sensitivity checks. The adoption decision is determined solely by `seed = 42`.
+

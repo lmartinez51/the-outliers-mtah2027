@@ -70,8 +70,8 @@ class TestV2Pipeline(unittest.TestCase):
 
     def test_02_determinism(self):
         """Test 2: Determinism - two runs produce bit-for-bit identical SHA-256."""
-        run2_path = os.path.join("outputs_v2", "submission_v2_run2.csv")
-        try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            run2_path = os.path.join(tmp_dir, "submission_v2_run2.csv")
             execute_pipeline(output_path=run2_path)
             with open(run2_path, "rb") as f:
                 hash2 = hashlib.sha256(f.read()).hexdigest()
@@ -85,9 +85,6 @@ class TestV2Pipeline(unittest.TestCase):
                 BASELINE_HASH,
                 f"Hash deviated from baseline: {self.primary_hash} != {BASELINE_HASH}",
             )
-        finally:
-            if os.path.isfile(run2_path):
-                os.remove(run2_path)
 
     def test_03_label_vocabulary(self):
         """Test 3: Labels strictly in {H, A, D, X}."""
