@@ -88,17 +88,29 @@ The harness executes:
 ## 4. Amendment 2 Diagnostics (All 20 Matches)
 
 ### 4.1 Diagnostic (a): Coverage & Sensor Statistics
-- **Total Period Frames:** 1,182,210
-- **Total Live Frames (Inside Phases):** 632,266
-- **Aggregate Out-of-Play Share:** **46.52%** (549,944 / 1,182,210 frames)
-- **Aggregate Ball-Detected Share (in-phase):** **92.94%** (587,605 / 632,266 frames)
-- **Aggregate Candidate Share under $\theta_0$ (in-phase):** **52.29%** (330,627 / 632,266 frames)
+- **Total Period Frames:** 1,182,244 discrete frames (1,123,013 across 19 included matches)
+- **Total Live Frames (Inside Phases):** 632,293 discrete frames (599,455 across 19 included matches)
+- **Pooled Out-of-Play Share:** **46.52%** (549,951 / 1,182,244 frames across all 20 matches; 46.62%, 523,558 / 1,123,013 frames across 19 included matches)
+- **Aggregate Ball-Detected Share (in-phase):** **92.94%** (587,649 / 632,293 frames)
+- **Aggregate Candidate Share under $\theta_0$ (in-phase):** **52.29%** (330,638 / 632,293 frames)
 
-### 4.2 Diagnostic (b): A Priori Dead-Ball Kinematics Agreement
-Agreement between v2's *a priori* physical stoppage mechanisms (out-of-bounds with 1.0 m margin; collective stop at $V_{\text{STOP}} = 1.35\text{ m/s}$ and $T_{\text{STOP}} = 1.5\text{ s}$ using 1 s centered displacement) and the reference phase-complement dead-ball mask across all 20 matches:
+### 4.2 Diagnostic (b): A Priori Dead-Ball Kinematics Comparison
+Evaluates agreement between physical stoppage mechanisms (out-of-bounds with 1.0 m margin; collective stop using 1 s centered displacement) and the reference phase-complement dead-ball mask across all 20 matches.
+
+**Run with Frozen v2 Constants (`tools/tuning/results/diagnostics_amendment_2b_frozen_constants.csv`):**
+Using exact v2 frozen constants converted to 10 fps ($V_{\text{STOP}} = 1.5\text{ m/s}$, $V_{\text{BALL\_STOP}} = 1.0\text{ m/s}$, $T_{\text{STOP}} = 30\text{ frames / } 3.0\text{ s}$, $T_{\text{OOB}} = 5\text{ frames / } 0.5\text{ s}$):
+- **Reference Dead Share:** 46.52% (549,951 / 1,182,244 frames)
+- **Predicted Dead Share:** 41.39% (489,298 / 1,182,244 frames)
+- **Frame-Level Precision (`D`):** **93.21%** (456,070 / 489,298 frames)
+- **Frame-Level Recall (`D`):** **82.93%** (456,070 / 549,951 frames)
+- **Frame-Level F1 (`D`):** **87.77%**
+
+**Run with Non-v2 Constants (`tools/tuning/results/diagnostics_amendment_2b.csv`):**
+Using originally drafted parameters ($V_{\text{STOP}} = 1.35\text{ m/s}$, $T_{\text{STOP}} = 15\text{ frames / } 1.5\text{ s}$, $V_{\text{BALL\_STOP}} = 1.5\text{ m/s}$, $T_{\text{OOB}} = 5\text{ frames}$):
 - **Reference Dead Share:** 46.52%
-- **Predicted Dead Share:** 41.98%
-- **Frame-Level Precision (`D`):** **92.37%**
-- **Frame-Level Recall (`D`):** **83.34%**
+- **Predicted Dead Share:** 39.46% (466,487 / 1,182,244 frames)
+- **Frame-Level Precision (`D`):** **92.37%** (430,890 / 466,487 frames)
+- **Frame-Level Recall (`D`):** **83.34%** (430,890 / 517,036 frames)
 - **Frame-Level F1 (`D`):** **87.62%**
-*(Note: Nothing in this stoppage detector was tuned. This evaluation serves strictly as an empirical validation of the physical stoppage heuristics.)*
+
+*(Note: Nothing in either stoppage detector was tuned. This evaluation serves strictly as an empirical comparison. Furthermore, the speed inputs differ fundamentally between datasets: 1 s centered displacement of detected players' positions at 10 fps versus the calibrated BAR-ATH optical tracker speed field at 25 fps.)*

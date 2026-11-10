@@ -25,11 +25,8 @@ import pandas as pd
 from evaluation.possession_metrics import SPELL_IOUS, label_codes, spell_scores, valid_runs
 from src.v2.ball_tracker import build_ball_track
 from src.v2.constants import (
-    G_INTERP,
-    MARGIN,
+    APRIORI,
     MIN_LIVE_FLICKER,
-    R_TOUCH,
-    T_CONFIRM,
 )
 from src.v2.state_machine import compose_half_possession
 
@@ -85,14 +82,14 @@ ALL_20_MATCH_IDS = sorted(TUNING_MATCH_IDS + HOLDOUT_MATCH_IDS + EXCLUDED_MATCH_
 
 def verify_harness_assertions() -> None:
     """Verify mandatory theta0 and grid integrity assertions."""
-    # 4.3 Mandatory Harness Assertion
-    assert THETA_0["R_TOUCH"] == R_TOUCH, f"R_TOUCH mismatch: {THETA_0['R_TOUCH']} != {R_TOUCH}"
-    assert THETA_0["MARGIN"] == MARGIN, f"MARGIN mismatch: {THETA_0['MARGIN']} != {MARGIN}"
-    assert round(THETA_0["T_CONFIRM"] * 25) == T_CONFIRM, (
-        f"T_CONFIRM mismatch: {round(THETA_0['T_CONFIRM'] * 25)} != {T_CONFIRM}"
+    # 4.3 Mandatory Harness Assertion against frozen a priori baseline
+    assert THETA_0["R_TOUCH"] == APRIORI["R_TOUCH"], f"R_TOUCH mismatch: {THETA_0['R_TOUCH']} != {APRIORI['R_TOUCH']}"
+    assert THETA_0["MARGIN"] == APRIORI["MARGIN"], f"MARGIN mismatch: {THETA_0['MARGIN']} != {APRIORI['MARGIN']}"
+    assert round(THETA_0["T_CONFIRM"] * 25) == APRIORI["T_CONFIRM"], (
+        f"T_CONFIRM mismatch: {round(THETA_0['T_CONFIRM'] * 25)} != {APRIORI['T_CONFIRM']}"
     )
-    assert round(THETA_0["G_INTERP"] * 25) == G_INTERP, (
-        f"G_INTERP mismatch: {round(THETA_0['G_INTERP'] * 25)} != {G_INTERP}"
+    assert round(THETA_0["G_INTERP"] * 25) == APRIORI["G_INTERP"], (
+        f"G_INTERP mismatch: {round(THETA_0['G_INTERP'] * 25)} != {APRIORI['G_INTERP']}"
     )
     assert round(THETA_0["MIN_LIVE_FLICKER"] * 25) == MIN_LIVE_FLICKER, (
         f"MIN_LIVE_FLICKER mismatch: {round(THETA_0['MIN_LIVE_FLICKER'] * 25)} != {MIN_LIVE_FLICKER}"

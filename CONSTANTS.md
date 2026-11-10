@@ -73,3 +73,27 @@ Under the Stage 3 tuning protocol, Tier B possession constants were tuned on ext
 
 - **Tier F (Fixed):** Non-tunable constants determined strictly by competition definition, data geometry, or official documentation.
 - **Tier B (Engineering Constants):** Parameters governing physical control candidates, turnover confirmation, and interpolation. Tuned strictly on external open tracking data.
+
+---
+
+## 5. Decision Record: Promotion of v2.1-external
+
+- **Date:** 2026-11-10
+- **Human Decision:** The team has decided that the primary submission for the competition is **`v2.1-external`** (`outputs_v2/submission_v2_1_external.csv`, SHA-256 `5b4c3db7ede46f497822604eda83d837836ea336a4da5dad2312492439c98c5a`), with the frozen a priori configuration **`v2.0.1-apriori`** (`outputs_v2/submission_v2.csv`, SHA-256 `89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2`) preserved as the reproducible baseline fallback.
+- **Pre-Registered Adoption Criterion:** Promotion was executed strictly in accordance with the pre-registered decision rule in [`tools/tuning/PLAN.md:175-178`](tools/tuning/PLAN.md):
+  > *"4. **All-or-Nothing Adoption Criterion:**"*
+  > *- Candidate $\theta^*$ is adopted **as a whole** into `src/v2/` **IF AND ONLY IF**:*
+  > *$$\bar{\Delta} > 0 \quad \text{AND} \quad CI_{\text{low}} > 0$$*
+  > *where $CI_{\text{low}}$ is the lower bound of the 95% bootstrap confidence interval computed with $B = 10,000$ draws (using `seed = 42` per Amendment 3).*
+- **Empirical Validation Metrics (`tools/tuning/results/tuning_summary.json`):**
+  - **Mean Paired Difference ($\bar{\Delta}$):** `+0.023947` (+2.39 percentage points of macro-averaged spell-level F1 over the 8 hold-out fixtures).
+  - **95% Bootstrap Confidence Interval (`seed = 42`, Pre-Registered Decision Seed):** `[+0.007967, +0.039078]` (strictly positive, $CI_{\text{low}} > 0$).
+  - **Robustness Sensitivity Checks ($B = 10,000$ draws):**
+    - `seed = 0`: `[+0.007877, +0.039022]` ($CI_{\text{low}} > 0$)
+    - `seed = 1`: `[+0.008006, +0.038890]` ($CI_{\text{low}} > 0$)
+- **Technical Limitations & Ground-Truth Firewall Boundaries:**
+  1. **Sensor & Platform Discrepancy:** External data is broadcast tracking (SkillCorner, 10 fps) derived from broadcast television video using single-camera pan-tilt-zoom tracking and off-screen kinematic extrapolation. The competition dataset is multi-camera high-resolution tactical optical tracking (Metrica FIFA/EPTS, 25 fps) with whole-pitch sensor coverage. Sensor noise profiles, occlusion handling, and coordinate precision differ between broadcast and multi-camera systems.
+  2. **Temporal Resolution & Frame-Rate Conversion:** Constants were converted from physical durations (seconds) to discrete frames assuming continuous kinematic invariance ($T_{\text{frames}} = \text{round}(T_{\text{seconds}} \times \text{fps})$). However, discrete frame-rate aliasing exists: 10 fps cannot resolve event durations shorter than 0.10 s, whereas 25 fps resolves down to 0.04 s. Velocity derivatives and rolling filter responses differ under discrete downsampling.
+  3. **Measured $G_{\text{INTERP}}$ Invariance on BAR-ATH:** On the challenge match BAR-ATH, changing $G_{\text{INTERP}}$ between 30 frames (1.2 s) and 50 frames (2.0 s) resulted in **exactly zero changes** across all 158,857 graded frames: exactly 73 frames (0.05% of graded match time) are interpolated under both thresholds because every bridged missing-ball gap in the tracking data happens to be $\le 30$ frames (1.2 s). Total known ball frames remain identically 94,287 / 158,857 (59.35%).
+  4. **Proxy Objective vs Competition Ground Truth:** The external tuning objective maximized spell-level macro-F1 agreement against SkillCorner's automated tactical phases of play. While this provides a leak-free objective proxy for possession continuity, it does not replicate or expose the challenge organizers' private ground-truth labeling conventions.
+

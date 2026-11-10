@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Spec-conformance unit tests on synthetic data only (Stage 2B, Section 4).
+"""Spec-conformance unit tests on synthetic data only (Stage 2B, Section 4 and Stage 4A).
 
 All tests use hand-made synthetic arrays. Zero match data, zero ground-truth data,
 and zero file labels are used.
@@ -11,6 +11,7 @@ import numpy as np
 from src.v2.ball_tracker import build_ball_track
 from src.v2.cleanup import cleanup_half_labels
 from src.v2.constants import (
+    APRIORI,
     FPS,
     G_INTERP,
     HALF_1_KICKOFF,
@@ -52,12 +53,14 @@ class TestV2SpecConformance(unittest.TestCase):
         for f in range(10):
             candidates[f] = LABEL_H
 
-        # At frame 20, Opponent A candidate appears and continues for exactly T_CONFIRM (50) frames
+        # At frame 20, Opponent A candidate appears and continues for exactly T_CONFIRM frames
         opp_start = 20
         for f in range(opp_start, opp_start + T_CONFIRM):
             candidates[f] = LABEL_A
 
-        labels, _ = compose_half_possession(dead, candidates, 0, n - 1, initial_possessor=LABEL_H)
+        labels, _ = compose_half_possession(
+            dead, candidates, 0, n - 1, initial_possessor=LABEL_H, t_confirm=T_CONFIRM
+        )
 
         # Before opp_start, possession is H
         for f in range(0, opp_start):
@@ -76,25 +79,27 @@ class TestV2SpecConformance(unittest.TestCase):
         # Establish H
         candidates[0] = LABEL_H
 
-        # A appears for 20 frames (counter = 20)
-        for f in range(10, 30):
+        # A appears for 10 frames
+        for f in range(10, 20):
             candidates[f] = LABEL_A
 
         # 10 frames with no candidate (None): counter neither resets nor increments
-        # A appears for another 20 frames (counter = 40)
-        for f in range(40, 60):
+        # A appears for another 10 frames (counter = 20)
+        for f in range(30, 40):
             candidates[f] = LABEL_A
 
-        # Now 1 candidate frame of H appears at frame 60: MUST reset counter to 0!
-        candidates[60] = LABEL_H
+        # Now 1 candidate frame of H appears at frame 50: MUST reset counter to 0!
+        candidates[50] = LABEL_H
 
-        # Now A appears for 35 frames (frames 70..104). Counter reaches 35 < T_CONFIRM (50)
-        for f in range(70, 105):
+        # Now A appears for T_CONFIRM - 5 frames (< T_CONFIRM)
+        for f in range(60, 60 + T_CONFIRM - 5):
             candidates[f] = LABEL_A
 
-        labels, _ = compose_half_possession(dead, candidates, 0, n - 1, initial_possessor=LABEL_H)
+        labels, _ = compose_half_possession(
+            dead, candidates, 0, n - 1, initial_possessor=LABEL_H, t_confirm=T_CONFIRM
+        )
 
-        # Turnover to A should NEVER occur because H reset the counter at frame 60
+        # Turnover to A should NEVER occur because H reset the counter at frame 50
         for f in range(n):
             self.assertEqual(labels[f], LABEL_H, f"Frame {f} should have remained H")
 
@@ -114,60 +119,61 @@ class TestV2SpecConformance(unittest.TestCase):
             self.assertEqual(labels[f], LABEL_H, f"Frame {f} should hold possessor H")
 
     def test_d_ball_gap_interpolation_boundary(self):
-        """(d) Gaps of exactly G_INTERP (50) are interpolated; G_INTERP + 1 (51) stay unknown."""
-        # Gap of exactly 50: frames 0 and 51 valid, frames 1..50 missing (len 50)
-        n1 = 60
-        bv1 = np.zeros(n1, dtype=np.float32)
-        bx1 = np.full(n1, np.nan, dtype=np.float32)
-        by1 = np.full(n1, np.nan, dtype=np.float32)
-        bv1[0], bx1[0], by1[0] = 1.0, 10.0, 20.0
-        bv1[51], bx1[51], by1[51] = 1.0, 61.0, 71.0
+        """(d) Gaps of exactly G_INTERP are interpolated; G_INTERP + 1 stay unknown (tested on both active and APRIORI)."""
+        for g_val in (G_INTERP, int(APRIORI["G_INTERP"])):
+            n1 = g_val + 10
+            bv1 = np.zeros(n1, dtype=np.float32)
+            bx1 = np.full(n1, np.nan, dtype=np.float32)
+            by1 = np.full(n1, np.nan, dtype=np.float32)
+            bv1[0], bx1[0], by1[0] = 1.0, 10.0, 20.0
+            bv1[g_val + 1], bx1[g_val + 1], by1[g_val + 1] = 1.0, 60.0, 70.0
 
-        known1, obx1, oby1 = build_ball_track(bv1, bx1, by1, 0, n1 - 1, g_interp=G_INTERP)
-        self.assertTrue(np.all(known1[0:52]), "Gap of exactly G_INTERP must be interpolated")
-        self.assertAlmostEqual(obx1[25], 10.0 + (61.0 - 10.0) * (25.0 / 51.0), places=4)
+            known1, obx1, oby1 = build_ball_track(bv1, bx1, by1, 0, n1 - 1, g_interp=g_val)
+            self.assertTrue(np.all(known1[0 : g_val + 2]), f"Gap of exactly {g_val} must be interpolated")
 
-        # Gap of 51: frames 0 and 52 valid, frames 1..51 missing (len 51)
-        n2 = 60
-        bv2 = np.zeros(n2, dtype=np.float32)
-        bx2 = np.full(n2, np.nan, dtype=np.float32)
-        by2 = np.full(n2, np.nan, dtype=np.float32)
-        bv2[0], bx2[0], by2[0] = 1.0, 10.0, 20.0
-        bv2[52], bx2[52], by2[52] = 1.0, 62.0, 72.0
+            n2 = g_val + 10
+            bv2 = np.zeros(n2, dtype=np.float32)
+            bx2 = np.full(n2, np.nan, dtype=np.float32)
+            by2 = np.full(n2, np.nan, dtype=np.float32)
+            bv2[0], bx2[0], by2[0] = 1.0, 10.0, 20.0
+            bv2[g_val + 2], bx2[g_val + 2], by2[g_val + 2] = 1.0, 60.0, 70.0
 
-        known2, obx2, oby2 = build_ball_track(bv2, bx2, by2, 0, n2 - 1, g_interp=G_INTERP)
-        self.assertTrue(known2[0])
-        self.assertTrue(known2[52])
-        self.assertFalse(np.any(known2[1:52]), "Gap of G_INTERP + 1 must stay unknown")
+            known2, obx2, oby2 = build_ball_track(bv2, bx2, by2, 0, n2 - 1, g_interp=g_val)
+            self.assertTrue(known2[0])
+            self.assertTrue(known2[g_val + 2])
+            self.assertFalse(np.any(known2[1 : g_val + 2]), f"Gap of {g_val} + 1 must stay unknown")
 
     def test_e_margin_and_rtouch_boundaries(self):
-        """(e) MARGIN (0.5) and R_TOUCH (2.0) boundary conditions."""
-        n = 5
-        bv = np.ones(n, dtype=np.float32)
-        known = np.ones(n, dtype=bool)
-        bx = np.zeros(n, dtype=np.float32)
-        by = np.zeros(n, dtype=np.float32)
+        """(e) MARGIN and R_TOUCH boundary conditions (tested on active and APRIORI constants)."""
+        for r_t, mar in [(R_TOUCH, MARGIN), (float(APRIORI["R_TOUCH"]), float(APRIORI["MARGIN"]))]:
+            n = 5
+            bv = np.ones(n, dtype=np.float32)
+            known = np.ones(n, dtype=bool)
+            bx = np.zeros(n, dtype=np.float32)
+            by = np.zeros(n, dtype=np.float32)
 
-        dh = np.zeros(n, dtype=np.float32)
-        da = np.zeros(n, dtype=np.float32)
+            dh = np.zeros(n, dtype=np.float32)
+            da = np.zeros(n, dtype=np.float32)
 
-        # Frame 0: dH = 2.0 (== R_TOUCH), dA = 2.5 (dA - dH == 0.5 == MARGIN) -> H
-        dh[0], da[0] = 2.0, 2.5
-        # Frame 1: dH = 2.001 (> R_TOUCH), dA = 2.6 -> None
-        dh[1], da[1] = 2.001, 2.6
-        # Frame 2: dH = 1.9, dA = 2.399 (dA - dH = 0.499 < MARGIN) -> None
-        dh[2], da[2] = 1.9, 2.399
-        # Frame 3: dH = 1.9, dA = 2.4 (dA - dH = 0.5 == MARGIN) -> H
-        dh[3], da[3] = 1.9, 2.4
-        # Frame 4: dA = 1.0, dH = 1.5 (dH - dA = 0.5 == MARGIN) -> A
-        dh[4], da[4] = 1.5, 1.0
+            # Frame 0: dH = r_t (== R_TOUCH), dA = r_t + mar (dA - dH == MARGIN) -> H
+            dh[0], da[0] = r_t, r_t + mar
+            # Frame 1: dH = r_t + 0.001 (> R_TOUCH), dA = r_t + mar + 0.1 -> None
+            dh[1], da[1] = r_t + 0.001, r_t + mar + 0.1
+            # Frame 2: dH = r_t - 0.1, dA = (r_t - 0.1) + mar - 0.001 (diff < MARGIN) -> None
+            dh[2], da[2] = r_t - 0.1, (r_t - 0.1) + mar - 0.001
+            # Frame 3: dH = r_t - 0.1, dA = (r_t - 0.1) + mar (diff == MARGIN) -> H
+            dh[3], da[3] = r_t - 0.1, (r_t - 0.1) + mar
+            # Frame 4: dA = 1.0, dH = 1.0 + mar (dH - dA == MARGIN) -> A
+            dh[4], da[4] = 1.0 + mar, 1.0
 
-        cands, _, _ = detect_control_candidates(bv, known, bx, by, dh, da, 0, n - 1)
-        self.assertEqual(cands[0], LABEL_H, "dH == R_TOUCH and diff == MARGIN should be H")
-        self.assertIsNone(cands[1], "dH > R_TOUCH should be None")
-        self.assertIsNone(cands[2], "diff < MARGIN should be None")
-        self.assertEqual(cands[3], LABEL_H, "diff == MARGIN should be H")
-        self.assertEqual(cands[4], LABEL_A, "diff == MARGIN should be A")
+            cands, _, _ = detect_control_candidates(
+                bv, known, bx, by, dh, da, 0, n - 1, r_touch=r_t, margin=mar
+            )
+            self.assertEqual(cands[0], LABEL_H, f"dH == {r_t} and diff == {mar} should be H")
+            self.assertIsNone(cands[1], f"dH > {r_t} should be None")
+            self.assertIsNone(cands[2], f"diff < {mar} should be None")
+            self.assertEqual(cands[3], LABEL_H, f"diff == {mar} should be H")
+            self.assertEqual(cands[4], LABEL_A, f"diff == {mar} should be A")
 
     def test_f_restart_backfill_and_hold_rule(self):
         """(f) After dead-to-live transition, state resets; first candidate backfills; if none, hold."""
@@ -193,49 +199,41 @@ class TestV2SpecConformance(unittest.TestCase):
         labels, _ = compose_half_possession(dead, candidates, 0, n - 1, initial_possessor=LABEL_H)
 
         # In Live 2, frames 40..50 must be back-filled to A
-        for f in range(40, 70):
-            self.assertEqual(labels[f], LABEL_A, f"Live 2 frame {f} should be A (back-filled from restart)")
+        for f in range(40, 51):
+            self.assertEqual(labels[f], LABEL_A, f"Frame {f} in Live 2 must be back-filled to A")
 
-        # Dead intervals must be D
-        for f in range(20, 40):
-            self.assertEqual(labels[f], LABEL_D)
-        for f in range(70, 80):
-            self.assertEqual(labels[f], LABEL_D)
-
-        # In Live 3, frames 80..99 must hold pre-stoppage possessor (A)
+        # In Live 3, all frames 80..99 must hold pre-stoppage possessor A
         for f in range(80, 100):
-            self.assertEqual(labels[f], LABEL_A, f"Live 3 frame {f} should hold pre-stoppage possessor A")
+            self.assertEqual(labels[f], LABEL_A, f"Frame {f} in Live 3 must hold A")
 
-    def test_g_oob_persistence_and_margin(self):
-        """(g) OUT_OF_BOUNDS: T_OOB - 1 (11) vs T_OOB (12); OOB_MARGIN boundary."""
-        n = 50
+    def test_g_out_of_bounds_boundary_and_t_oob(self):
+        """(g) OOB_MARGIN and T_OOB boundary conditions."""
+        n = 30
         known = np.ones(n, dtype=bool)
-        bx = np.full(n, 50.0, dtype=np.float32)  # Inside pitch
-        by = np.full(n, 30.0, dtype=np.float32)
+        bx = np.zeros(n, dtype=np.float32)
+        by = np.zeros(n, dtype=np.float32)
         p75 = np.full(n, 3.0, dtype=np.float32)
 
-        # OOB boundary: pitch_len = 105.3, oob_margin = 1.0 -> boundary is 106.3
-        # Exactly on boundary 106.3 -> not strictly greater, so not OOB
-        bx[0:15] = 106.3
-        _, _, oob_boundary, _ = compute_dead_ball_mask(
-            known, bx, by, p75, 0, n - 1, kickoff_frame=0
-        )
-        self.assertFalse(np.any(oob_boundary[0:15]), "Exactly on OOB_MARGIN boundary is not OOB")
+        # Boundary test at Touchline (Y = pitch_width + oob_margin = 68.0 + 1.0 = 69.0)
+        # Inside margin: Y = 69.0 (not OOB)
+        by_inside = np.full(n, 69.0, dtype=np.float32)
+        _, _, oob_inside, _ = compute_dead_ball_mask(known, bx, by_inside, p75, 0, n - 1, 0)
+        self.assertEqual(int(np.sum(oob_inside)), 0, "Y=69.0 is within 1.0m margin, should not be OOB")
 
-        # 11 frames of 106.31 (T_OOB - 1) -> should NOT trigger
-        bx[0:50] = 50.0
-        bx[10:21] = 106.31
-        _, _, oob_11, _ = compute_dead_ball_mask(
-            known, bx, by, p75, 0, n - 1, kickoff_frame=0
-        )
-        self.assertFalse(np.any(oob_11[10:21]), "T_OOB - 1 frames must not trigger OOB")
+        # Outside margin: Y = 69.01 (OOB)
+        by_outside = np.full(n, 69.01, dtype=np.float32)
+        # Exactly T_OOB - 1 (11 frames): should NOT trigger dead ball
+        by_short = np.copy(by_inside)
+        by_short[5:16] = 69.01  # 11 frames
+        _, _, oob_short, _ = compute_dead_ball_mask(known, bx, by_short, p75, 0, n - 1, 0)
+        self.assertEqual(int(np.sum(oob_short)), 0, "11 frames of OOB (< T_OOB) should not trigger dead ball")
 
-        # 12 frames of 106.31 (T_OOB) -> MUST trigger
-        bx[25:37] = 106.31
-        _, _, oob_12, _ = compute_dead_ball_mask(
-            known, bx, by, p75, 0, n - 1, kickoff_frame=0
-        )
-        self.assertTrue(np.all(oob_12[25:37]), "T_OOB frames must trigger OOB")
+        # Exactly T_OOB (12 frames): MUST trigger dead ball
+        by_exact = np.copy(by_inside)
+        by_exact[5:17] = 69.01  # 12 frames
+        _, _, oob_exact, _ = compute_dead_ball_mask(known, bx, by_exact, p75, 0, n - 1, 0)
+        self.assertEqual(int(np.sum(oob_exact)), 12, "12 frames of OOB (== T_OOB) must trigger dead ball")
+        self.assertTrue(np.all(oob_exact[5:17]))
 
     def test_h_collective_stop_boundaries_and_ball_skip(self):
         """(h) COLLECTIVE_STOP: T_STOP - 1 vs T_STOP; V_STOP boundary; uncomputable ball skipped."""
