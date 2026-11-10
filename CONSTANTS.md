@@ -79,12 +79,12 @@ Under the Stage 3 tuning protocol, Tier B possession constants were tuned on ext
 ## 5. Decision Record: Promotion of v2.1-external
 
 - **Date:** 2026-11-10
-- **Human Decision:** The team has decided that the primary submission for the competition is **`v2.1-external`** (`outputs_v2/submission_v2_1_external.csv`, SHA-256 `5b4c3db7ede46f497822604eda83d837836ea336a4da5dad2312492439c98c5a`), with the frozen a priori configuration **`v2.0.1-apriori`** (`outputs_v2/submission_v2.csv`, SHA-256 `89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2`) preserved as the reproducible baseline fallback.
+- **Human Decision:** The team has decided that the primary submission for the competition is **`v2.1-external`** (`outputs_v2/submission_v2_1_external.csv`, SHA-256 `5b4c3db7ede46f497822604eda83d837836ea336a4da5dad2312492439c98c5a`), with the frozen a priori configuration **`v2.0.1-apriori`** (`outputs_v2/submission_v2.csv`, SHA-256 `89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2`) preserved as the reproducible baseline fallback (available via `--config apriori`).
 - **Pre-Registered Adoption Criterion:** Promotion was executed strictly in accordance with the pre-registered decision rule in [`tools/tuning/PLAN.md:175-178`](tools/tuning/PLAN.md):
   > *"4. **All-or-Nothing Adoption Criterion:**"*
   > *- Candidate $\theta^*$ is adopted **as a whole** into `src/v2/` **IF AND ONLY IF**:*
   > *$$\bar{\Delta} > 0 \quad \text{AND} \quad CI_{\text{low}} > 0$$*
-  > *where $CI_{\text{low}}$ is the lower bound of the 95% bootstrap confidence interval computed with $B = 10,000$ draws (using `seed = 42` per Amendment 3).*
+  > *- If $\bar{\Delta} \le 0$ or $CI_{\text{low}} \le 0$, the external evidence does not decisively support a change. The frozen \*a priori\* baseline constants strictly remain, and no changes are made to `src/v2/constants.py`.*
 - **Empirical Validation Metrics (`tools/tuning/results/tuning_summary.json`):**
   - **Mean Paired Difference ($\bar{\Delta}$):** `+0.023947` (+2.39 percentage points of macro-averaged spell-level F1 over the 8 hold-out fixtures).
   - **95% Bootstrap Confidence Interval (`seed = 42`, Pre-Registered Decision Seed):** `[+0.007967, +0.039078]` (strictly positive, $CI_{\text{low}} > 0$).
@@ -92,8 +92,22 @@ Under the Stage 3 tuning protocol, Tier B possession constants were tuned on ext
     - `seed = 0`: `[+0.007877, +0.039022]` ($CI_{\text{low}} > 0$)
     - `seed = 1`: `[+0.008006, +0.038890]` ($CI_{\text{low}} > 0$)
 - **Technical Limitations & Ground-Truth Firewall Boundaries:**
-  1. **Sensor & Platform Discrepancy:** External data is broadcast tracking (SkillCorner, 10 fps) derived from broadcast television video using single-camera pan-tilt-zoom tracking and off-screen kinematic extrapolation. The competition dataset is multi-camera high-resolution tactical optical tracking (Metrica FIFA/EPTS, 25 fps) with whole-pitch sensor coverage. Sensor noise profiles, occlusion handling, and coordinate precision differ between broadcast and multi-camera systems.
-  2. **Temporal Resolution & Frame-Rate Conversion:** Constants were converted from physical durations (seconds) to discrete frames assuming continuous kinematic invariance ($T_{\text{frames}} = \text{round}(T_{\text{seconds}} \times \text{fps})$). However, discrete frame-rate aliasing exists: 10 fps cannot resolve event durations shorter than 0.10 s, whereas 25 fps resolves down to 0.04 s. Velocity derivatives and rolling filter responses differ under discrete downsampling.
-  3. **Measured $G_{\text{INTERP}}$ Invariance on BAR-ATH:** On the challenge match BAR-ATH, changing $G_{\text{INTERP}}$ between 30 frames (1.2 s) and 50 frames (2.0 s) resulted in **exactly zero changes** across all 158,857 graded frames: exactly 73 frames (0.05% of graded match time) are interpolated under both thresholds because every bridged missing-ball gap in the tracking data happens to be $\le 30$ frames (1.2 s). Total known ball frames remain identically 94,287 / 158,857 (59.35%).
-  4. **Proxy Objective vs Competition Ground Truth:** The external tuning objective maximized spell-level macro-F1 agreement against SkillCorner's automated tactical phases of play. While this provides a leak-free objective proxy for possession continuity, it does not replicate or expose the challenge organizers' private ground-truth labeling conventions.
+  1. **Tuned Constants at Boundary of Pre-Registered Grid:** All four tuned parameters in $\theta^*$ selected by the tuning protocol lie at the extreme edge of their pre-registered discrete search grids:
+     - $R_{\text{TOUCH}} = 2.5\text{ m}$ is the grid maximum ($\{1.5, 2.0, 2.5\}\text{ m}$).
+     - $\text{MARGIN} = 0.75\text{ m}$ is the grid maximum ($\{0.25, 0.50, 0.75\}\text{ m}$).
+     - $T_{\text{CONFIRM}} = 1.2\text{ s}$ ($30\text{ frames}$) is the grid minimum ($\{1.2, 2.0, 2.8\}\text{ s}$).
+     - $G_{\text{INTERP}} = 1.2\text{ s}$ ($30\text{ frames}$) is the grid minimum ($\{1.2, 2.0, 2.8\}\text{ s}$).
+     The true unconstrained empirical optimum on external data may lie outside the pre-registered bounding box, but no search expansion was permitted under the frozen protocol.
+  2. **Discrepancy Between External Touch Definition and Competition Control Definition:** The SkillCorner event labels used for tuning assign possession based on touches and completed passes. By contrast, the competition specification requires sustained **controlled possession**, explicitly stating in [`CHALLENGE.md:55`](CHALLENGE.md):
+     > *"A change of possession occurs when a player from the opposing team gains \*\*controlled\*\* possession of the ball."*
+     and in [`CHALLENGE.md:76-80`](CHALLENGE.md):
+     > *"#### What does not count as a change of possession"*
+     > *"- a simple touch of the ball without control"*
+     > *"- a deflection of a pass that does not intercept it"*
+     > *"- an aerial duel won without subsequent control of the ball by that team"*
+     (paraphrased as: *"A touch without control — a deflection, a contested header, a goalkeeper parry — does NOT flip possession..."*). Consequently, external data optimizes for faster touch-level responsiveness rather than contested-ball filtering.
+  3. **Dead-Ball Mask and Ball Detection Disparity:** The external matches evaluate under an oracle dead-ball mask derived from SkillCorner phases of play with 92.94% ball detection (587,688 / 632,293 frames per prompt specification; 587,649 / 632,293 frames in `tools/tuning/results/diagnostics_amendment_2a.csv`). By contrast, the competition match BAR-ATH evaluates under a heuristic dead-ball mask with only 59.35% ball detection (62,943 / 106,054 frames; 94,287 / 158,857 across all graded frames). Heuristic dead-ball errors and high ball occlusion on BAR-ATH may interact unpredictably with shorter confirmation windows.
+  4. **Hold-Out Gain is an External Estimate, Not a BAR-ATH Guarantee:** The hold-out gain (+0.015 mean F1 across 3 splits / +0.024 mean paired difference across the 8 hold-out matches) is an empirical measurement on external broadcast tracking data ([`C:\Users\leolm\ext_data\skillcorner\README.md`](C:\Users\leolm\ext_data\skillcorner\README.md): *"Broadcast tracking data is tracking data collected through computer vision and machine learning out of the broadcast video"*), not a measured performance guarantee on BAR-ATH optical tracking ([`DATA.md:74`](DATA.md): *"Metrica's FIFA/EPTS export, a metadata XML plus a raw text file"*).
+  5. **Temporal Resolution & Frame-Rate Conversion:** Constants were converted between physical durations (seconds) and discrete frames ($T_{\text{frames}} = \text{round}(T_{\text{seconds}} \times \text{fps})$). Discrete frame-rate aliasing differs: 10 fps cannot resolve event durations shorter than 0.10 s, whereas 25 fps resolves down to 0.04 s.
+  6. **Measured $G_{\text{INTERP}}$ Invariance on BAR-ATH:** On the challenge match BAR-ATH, changing $G_{\text{INTERP}}$ between 30 frames (1.2 s) and 50 frames (2.0 s) resulted in **exactly zero changes** across all 158,857 graded frames: exactly 73 frames (0.05% of graded match time) are interpolated under both thresholds because every bridged missing-ball gap in the tracking data happens to be $\le 30$ frames (1.2 s). Total known ball frames remain identically 94,287 / 158,857 (59.35%).
 

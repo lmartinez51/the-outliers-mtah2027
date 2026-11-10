@@ -71,15 +71,46 @@ The v2 pipeline operates offline per half (`11,185..90,651` and `110,808..190,19
 - Tested and executed with **Python 3.12.0** (`.venv\Scripts\python.exe`) and **NumPy 2.2.6**.
 
 ### Run the Pipeline
+
+The entry point `src.v2.run_v2` executes the deterministic pipeline. By default, it runs the promoted primary configuration `v2_1` (`outputs_v2/submission_v2_1_external.csv`).
+
+To protect generated files from accidental modification or deletion, **the runner refuses to overwrite existing destination files by default** (`FileExistsError`).
+
+#### First Run (Fresh Output)
 ```bash
+# Primary submission (v2.1-external, default):
 python -B -m src.v2.run_v2
+
+# Baseline fallback (v2.0.1-apriori):
+python -B -m src.v2.run_v2 --config apriori
 ```
+
+#### Re-Running with Overwrite
+If destination files already exist in `outputs_v2/`, pass `--overwrite` to re-generate them:
+```bash
+# Re-run primary submission:
+python -B -m src.v2.run_v2 --overwrite
+
+# Re-run baseline fallback:
+python -B -m src.v2.run_v2 --config apriori --overwrite
+```
+
+#### Custom Output Path
+To write to an alternate path:
+```bash
+python -B -m src.v2.run_v2 --out path/to/custom_submission.csv
+```
+
 *Measured execution times on standard CPU:*
 - **Cached execution (`data/cache_v2_primitives.npz` present):** **~2.75 seconds**. Loads pre-extracted kinematic primitives directly into memory.
 - **Fresh extraction (cache absent):** **~8.64 seconds**. Parses raw ASCII tracking (`BAR-ATH_tactical_atd.txt`) and XML structure from scratch and rebuilds the local primitive cache.
 
 ### Validate Output Format
 ```bash
+# Validate primary submission:
+python -B evaluation/validate_submission.py outputs_v2/submission_v2_1_external.csv
+
+# Validate baseline fallback:
 python -B evaluation/validate_submission.py outputs_v2/submission_v2.csv
 ```
 

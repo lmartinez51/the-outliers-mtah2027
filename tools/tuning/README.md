@@ -106,11 +106,11 @@ Using exact v2 frozen constants converted to 10 fps ($V_{\text{STOP}} = 1.5\text
 - **Frame-Level F1 (`D`):** **87.77%**
 
 **Run with Non-v2 Constants (`tools/tuning/results/diagnostics_amendment_2b.csv`):**
-Using originally drafted parameters ($V_{\text{STOP}} = 1.35\text{ m/s}$, $T_{\text{STOP}} = 15\text{ frames / } 1.5\text{ s}$, $V_{\text{BALL\_STOP}} = 1.5\text{ m/s}$, $T_{\text{OOB}} = 5\text{ frames}$):
-- **Reference Dead Share:** 46.52%
-- **Predicted Dead Share:** 39.46% (466,487 / 1,182,244 frames)
-- **Frame-Level Precision (`D`):** **92.37%** (430,890 / 466,487 frames)
-- **Frame-Level Recall (`D`):** **83.34%** (430,890 / 517,036 frames)
+Using originally drafted parameters ($V_{\text{STOP}} = 1.35\text{ m/s}$, $T_{\text{STOP}} = 15\text{ frames / } 1.5\text{ s}$, $V_{\text{BALL\_STOP}} = 1.5\text{ m/s}$, $T_{\text{OOB}} = 5\text{ frames / } 0.5\text{ s}$):
+- **Reference Dead Share:** 46.52% (549,951 / 1,182,244 frames)
+- **Predicted Dead Share:** 41.97% (496,181 / 1,182,244 frames)
+- **Frame-Level Precision (`D`):** **92.37%** (458,319 / 496,181 frames)
+- **Frame-Level Recall (`D`):** **83.34%** (458,319 / 549,951 frames)
 - **Frame-Level F1 (`D`):** **87.62%**
 
-*(Note: Nothing in either stoppage detector was tuned. This evaluation serves strictly as an empirical comparison. Furthermore, the speed inputs differ fundamentally between datasets: 1 s centered displacement of detected players' positions at 10 fps versus the calibrated BAR-ATH optical tracker speed field at 25 fps.)*
+*(Provenance & Status: These non-v2 parameters were introduced in commit `65b5830` ([`tools/tuning/PLAN.md:197`](tools/tuning/PLAN.md)). The threshold $V_{\text{STOP}} = 1.35\text{ m/s}$ matches `stoppage_speed_w75` in the legacy v1 pipeline ([`src/mtah_model.py:355`](../../src/mtah_model.py#L355)) [VERIFIED]; the duration $T_{\text{STOP}} = 1.5\text{ s}$ has no recorded source in the codebase or commit history [UNKNOWN]. This run does NOT represent or provide evidence about the v2 pipeline, which uses $V_{\text{STOP}} = 1.5\text{ m/s}$ and $T_{\text{STOP}} = 3.0\text{ s}$ (75 frames at 25 fps). Nothing in either stoppage detector was tuned. Furthermore, speed inputs differ fundamentally between datasets: 1 s centered displacement of detected players' positions at 10 fps versus the calibrated BAR-ATH optical tracker speed field at 25 fps.)*
