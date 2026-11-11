@@ -5,7 +5,7 @@ tracking data into an intuitive, high-performance FC Barcelona 3D broadcast repl
 for src/viewer.html.
 
 Team: The Outliers
-Authors: Lorenzo Martínez, Ana Karen Arellano, and Steven Ibarra
+Authors: Team The Outliers
 Repository: the-outliers-mtah2027
 Target Competition: More than a Hack 2027
 """

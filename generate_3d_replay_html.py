@@ -1,7 +1,7 @@
 """Root forwarder for src/generate_3d_replay_html.py.
 
 Team: The Outliers
-Authors: Lorenzo Martínez, Ana Karen Arellano, and Steven Ibarra
+Authors: Team The Outliers
 """
 import sys
 import os

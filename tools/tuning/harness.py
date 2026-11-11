@@ -627,10 +627,15 @@ def compute_diagnostics_2b(
 
 
 def run_tuning_protocol(
-    ext_data_dir: str = r"C:\Users\leolm\ext_data\skillcorner",
+    ext_data_dir: Optional[str] = None,
     results_dir: str = os.path.join("tools", "tuning", "results"),
 ) -> Dict[str, Any]:
     """Execute complete Stage 3 tuning protocol."""
+    if ext_data_dir is None:
+        ext_data_dir = os.environ.get(
+            "SKILLCORNER_DATA_DIR",
+            os.path.join(os.path.dirname(__file__), "..", "..", "..", "ext_data", "skillcorner")
+        )
     start_time = time.time()
     os.makedirs(results_dir, exist_ok=True)
 

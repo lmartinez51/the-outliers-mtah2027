@@ -10,13 +10,13 @@ This directory implements the external parameter tuning protocol for Tier B poss
 - **License:** MIT License (Copyright (c) 2020 SkillCorner)
 - **Commit Hash:** `4340d274572876239c154c90bc507a9b3250a656`
 - **Data Scope:** 20 matches from the Australian A-League 2024/2025 (`competition_id: 61`, `season_id: 95`, `competition_edition_id: 870`).
-- **Storage Location:** Kept strictly outside the repository at `C:\Users\leolm\ext_data\skillcorner`.
+- **Storage Location:** Kept strictly outside the repository (e.g. `../ext_data/skillcorner` adjacent to repo, or path specified via environment variable `SKILLCORNER_DATA_DIR`).
 - **Fixture Overlap:** 0% overlap with the challenge fixture (BAR-ATH, LaLiga 2024-25).
 
 To clone and verify the external data:
 ```bash
-git clone https://github.com/SkillCorner/opendata.git C:\Users\leolm\ext_data\skillcorner
-cd C:\Users\leolm\ext_data\skillcorner
+git clone https://github.com/SkillCorner/opendata.git ../ext_data/skillcorner
+cd ../ext_data/skillcorner
 git checkout 4340d274572876239c154c90bc507a9b3250a656
 ```
 

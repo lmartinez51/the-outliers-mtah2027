@@ -1,6 +1,6 @@
 # =============================================================================
 # More than a Hack 2027 — Official Pinned Dependencies
-# Team: The Outliers (Lorenzo Martínez, Ana Karen Arellano, Steven Ibarra)
+# Team: The Outliers (Team The Outliers)
 # Validated on Python 3.10+ / 3.11+ (x86_64 / arm64 / Windows / Linux / macOS)
 # =============================================================================
 

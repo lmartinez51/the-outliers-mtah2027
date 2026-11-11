@@ -9,7 +9,7 @@ flickering, eliminate dead-ball double-penalization, and maximize spellF1 (the o
 competition ranking metric).
 
 Team: The Outliers
-Authors: Lorenzo Martínez, Ana Karen Arellano, and Steven Ibarra
+Authors: Team The Outliers
 Repository: the-outliers-mtah2027
 Target Competition: More than a Hack 2027
 

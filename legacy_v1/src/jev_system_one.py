@@ -4,7 +4,7 @@ src/jev_system_one.py
 Deterministic Jev AI (`System One`) Epistemic Calibration & Conflict-Arbitration Primitives.
 
 Team: The Outliers
-Authors: Lorenzo Martínez, Ana Karen Arellano, and Steven Ibarra
+Authors: Team The Outliers
 Repository: the-outliers-mtah2027
 Target Competition: More than a Hack 2027
 

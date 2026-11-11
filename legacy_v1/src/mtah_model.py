@@ -4,7 +4,7 @@ src/mtah_model.py
 Factored 3-State ('H', 'A', 'D') Probabilistic Possession Model.
 
 Team: The Outliers
-Authors: Lorenzo Martínez, Ana Karen Arellano, and Steven Ibarra
+Authors: Team The Outliers
 Repository: the-outliers-mtah2027
 Target Competition: More than a Hack 2027
 

@@ -4,7 +4,7 @@
 
 **Competition:** More than a Hack 2027 (FC Barcelona & Metrica Sports)  
 **Team Name:** `The Outliers`  
-**Authors:** Lorenzo Martínez, Ana Karen Arellano, and Steven Ibarra  
+**Authors:** Team The Outliers, Ana Karen Arellano, and Steven Ibarra  
 **Repository:** [`the-outliers-mtah2027`](https://github.com/lmartinez51/the-outliers-mtah2027)  
 **Target Fixture:** `BAR-ATH` (FC Barcelona vs. Athletic Club)  
 **Official Output File:** `The_Outliers.csv` / `submission.csv` (`MD5: f9507f09200e235665c5c988c6a1504e`)  
@@ -317,6 +317,6 @@ Open `barca_3d_interactive_replay.html` directly in any web browser (Chrome, Edg
 
 ---
 *Signed by:*  
-**Lorenzo Martinez**  
+**Team The Outliers**  
 Lead Machine Learning Engineer & Researcher  
 *More than a Hack 2027 — FC Barcelona & Metrica Sports*

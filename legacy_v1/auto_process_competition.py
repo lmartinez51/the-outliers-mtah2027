@@ -8,7 +8,7 @@ Executes the complete end-to-end competition pipeline in a single command:
   5. Interactive 3D Tactical Broadcast Replay Generation (src/generate_3d_replay_html.py)
 
 Team: The Outliers
-Authors: Lorenzo Martínez, Ana Karen Arellano, and Steven Ibarra
+Authors: Team The Outliers
 Repository: the-outliers-mtah2027
 Target Competition: More than a Hack 2027
 """

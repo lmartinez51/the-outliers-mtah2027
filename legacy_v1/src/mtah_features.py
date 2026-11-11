@@ -1,7 +1,7 @@
 """Fast Streaming Feature Extractor & Binary Cache for More than a Hack 2027.
 
 Team: The Outliers
-Authors: Lorenzo Martínez, Ana Karen Arellano, and Steven Ibarra
+Authors: Team The Outliers
 Repository: the-outliers-mtah2027
 Target Competition: More than a Hack 2027
 

@@ -4,7 +4,7 @@
 
 **Proyecto:** More than a Hack 2027 — FC Barcelona & Metrica Sports  
 **Equipo:** `The Outliers`  
-**Autores:** Lorenzo Martínez, Ana Karen Arellano y Steven Ibarra  
+**Autores:** Team The Outliers, Ana Karen Arellano y Steven Ibarra  
 **Repositorio:** [`the-outliers-mtah2027`](https://github.com/lmartinez51/the-outliers-mtah2027)  
 **Objetivo:** Permitir a cualquier compañero de equipo reproducir el pipeline completo, validar la entrega oficial y explorar el visor 3D interactivo en **menos de 3 minutos**.
 
@@ -208,4 +208,4 @@ El resultado esperado en consola debe ser:
 
 - **Abstenciones en juego evaluado:** `0 cuadros (0.00%)`
 
-¡Cualquier duda o ajuste, comunícate con Lorenzo Martinez en el canal del equipo!
+¡Cualquier duda o ajuste, comunícate con Team The Outliers en el canal del equipo!

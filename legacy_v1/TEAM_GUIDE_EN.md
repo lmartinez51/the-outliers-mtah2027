@@ -4,7 +4,7 @@
 
 **Project:** More than a Hack 2027 — FC Barcelona & Metrica Sports  
 **Team:** `The Outliers`  
-**Authors:** Lorenzo Martínez, Ana Karen Arellano, and Steven Ibarra  
+**Authors:** Team The Outliers, Ana Karen Arellano, and Steven Ibarra  
 **Repository:** [`the-outliers-mtah2027`](https://github.com/lmartinez51/the-outliers-mtah2027)  
 **Objective:** Enable any teammate or competition evaluator to reproduce the entire pipeline, validate the official submission, and explore the interactive 3D tactical viewer in **under 3 minutes**.
 
@@ -208,4 +208,4 @@ Expected terminal output:
 
 - **Abstentions on Graded Frames:** `0 frames (0.00%)`
 
-For questions or suggestions, please contact Lorenzo Martinez on the team channel!
+For questions or suggestions, please contact Team The Outliers on the team channel!
