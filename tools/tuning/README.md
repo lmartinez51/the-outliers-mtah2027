@@ -50,7 +50,7 @@ The harness executes:
   - Baseline $\theta_0$ Mean Spell F1: **0.48954**
 - **Hold-Out Set (8 matches):** `2007448, 2007721, 2010085, 2011166, 2013725, 2015213, 2016236, 2017461`
   - Baseline $\theta_0$ Mean Spell F1: **0.48209**
-- **Excluded (1 match):** `1953632` (catalog status `"not_started"`)
+- **Excluded (1 match):** `1953632` (catalog status `not_started`)
 
 ### 3.2 81-Grid Search on Tuning Matches
 

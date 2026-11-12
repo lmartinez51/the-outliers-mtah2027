@@ -129,7 +129,7 @@ The dataset comprises 20 matches from the Australian A-League 2024/2025 season. 
 
 ### 4.2 Pre-Registered Protocol & Decision Rule
 The tuning experiment was specified and locked in `tools/tuning/PLAN.md` prior to execution:
-- **Partition:** 11 tuning fixtures, 8 hold-out evaluation fixtures, and 1 excluded fixture (`1953632`, catalog status "not_started").
+- **Partition:** 11 tuning fixtures, 8 hold-out evaluation fixtures, and 1 excluded fixture (`1953632`, catalog status `not_started`).
 - **Grid:** 81 configurations over $R_{\text{TOUCH}} \in \{1.5, 2.0, 2.5\}\text{ m}$, $\text{MARGIN} \in \{0.25, 0.50, 0.75\}\text{ m}$, $T_{\text{CONFIRM}} \in \{1.2, 2.0, 2.8\}\text{ s}$, and $G_{\text{INTERP}} \in \{1.2, 2.0, 2.8\}\text{ s}$.
 - **Objective:** Macro-averaged spell-level F1 evaluated against SkillCorner dynamic events within phase intervals.
 - **Adoption Criterion:** Quoted from (tools/tuning/PLAN.md:175-177):
