@@ -34,7 +34,7 @@ All engineering constants were either specified *a priori* from domain kinematic
 - **Graded Block Boundaries:** Half 1 (`11,185..90,651`, 79,467 frames) and Half 2 (`110,808..190,197`, 79,390 frames), summing to 158,857 graded frames. All 40,462 frames outside these blocks are assigned `X`.
 
 ### 2.2 Excluded Assets
-- **Competition Video (`BAR-ATH_tactical.mp4`):** Not decoded, processed, or viewed.
+- **Competition Video (`BAR-ATH_tactical.mp4`):** Viewed visually only to understand what counts as possession; not decoded, read, or processed by the pipeline or by any tuning code. No video file is part of the repository, and the pipeline's output was not checked against the video.
 - **Smart Tagging (`BAR-ATH_smart_tagging.csv`):** Excluded from dead-ball masking because event timestamps mark broad intervals rather than exact restarts, as documented in (starter/load_smart_tagging.py:38-39):
   > *"The tagging marks a ~5 s window around the restart rather than the instant, so the check below is containment, not equality."*
 - **Ground Truth (`evaluation/gt/`):** Never loaded, opened, or imported by the pipeline.

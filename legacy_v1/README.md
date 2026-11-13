@@ -20,7 +20,7 @@ This directory contains the legacy Version 1 codebase and documentation develope
 - `legacy_v1/src/mtah_features.py`: Feature engineering pipeline computing spatial, kinematic, and contextual tracking features.
 - `legacy_v1/src/mtah_model.py`: LightGBM training harness, 5-fold temporal block cross-validation, and motor-base probability predictor.
 - `legacy_v1/src/mtah_decoder.py`: Post-processing decoder applying dead-ball masking, deflection absorption, and label smoothing.
-- `legacy_v1/src/jev_system_one.py`: LLM-assisted tactical arbitration module.
+- `legacy_v1/src/jev_system_one.py`: Deterministic, local NumPy routines for epistemic calibration and conflict arbitration (referred to in v1 as Jev AI / System One). It makes zero external network calls and uses no LLM or external AI service.
 - `legacy_v1/src/generate_3d_replay_html.py`, `legacy_v1/src/viewer.html`, `legacy_v1/src/three.min.js`: 3D match visualizer and WebGL assets.
 
 ### Archived Scripts & Guides
