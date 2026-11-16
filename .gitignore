@@ -11,6 +11,9 @@ possession_by_frame.pkl
 
 # Gated raw match data & optical tracking coordinates
 data/
+
+# Generated possession submissions and reports
+outputs_v2/
 *.mp4
 *.gzip
 *.pl3container

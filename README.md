@@ -124,14 +124,25 @@ python -B evaluation/validate_submission.py outputs_v2/submission_v2_1_external.
 python -B evaluation/validate_submission.py outputs_v2/submission_v2.csv
 ```
 
-### Run Full Test Suite
+### Run Data-Free Test Suite
+This suite does not read gated competition tracking, generated submissions, or match-derived caches:
 ```bash
-python -B -m unittest discover -s tests -p "test_*.py" -v
+python3 -B -m unittest \
+  tests.test_v2_spec \
+  tests.test_tuning_firewall \
+  tests.test_docs_quotes \
+  tests.test_v2_hardening -v
+```
+
+### Run Participant-Only Full Test Suite
+Run this only in the local participant environment containing the gated competition tracking:
+```bash
+python3 -B -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 ---
 
-## 4. Test Suite Coverage (23 Tests)
+## 4. Test Suite Coverage
 
 ### A. Pipeline & Compliance Suite ([`tests/test_v2_pipeline.py`](tests/test_v2_pipeline.py) — 9 tests)
 1. `test_01_gt_firewall`: Static grep ensuring `src/v2/` contains zero references to ground-truth files, loaders, or forbidden evaluation metrics.
@@ -160,6 +171,9 @@ python -B -m unittest discover -s tests -p "test_*.py" -v
 ### C. Tuning Firewall & Quote Verification Suites (3 tests)
 - [`tests/test_tuning_firewall.py`](tests/test_tuning_firewall.py) (2 tests): Ensures `tools/tuning/` contains zero BAR-ATH or v1 forbidden tokens and `src/v2/` never imports `tools/tuning/`.
 - [`tests/test_docs_quotes.py`](tests/test_docs_quotes.py) (1 test): Runs [`tools/docs/check_quotes.py`](tools/docs/check_quotes.py) to verify every quote across project docs matches its cited source lines with zero uncited quotes.
+
+### D. Data-Free Hardening Regression Suite
+- [`tests/test_v2_hardening.py`](tests/test_v2_hardening.py): Verifies external-citation isolation, cache provenance and invalidation, corrupt/legacy cache rebuilding, and bare output-path handling without requiring competition assets.
 
 ---
 
@@ -250,9 +264,9 @@ the-outliers-mtah2027/
 ├── src/
 │   └── v2/                        # Active deterministic pipeline
 │       ├── constants.py           # Numerical thresholds and configurations
-│       ├── extraction.py          # ATD raw text parser and primitive extraction
-│       ├── interpolation.py       # Missing ball gap interpolation
-│       ├── candidates.py          # Proximity and margin evaluation
+│       ├── extractor.py           # ATD raw text parser and primitive extraction
+│       ├── ball_tracker.py        # Missing ball gap interpolation
+│       ├── control_detector.py     # Proximity and margin evaluation
 │       ├── dead_ball.py           # Boundary and collective stop masks
 │       ├── state_machine.py       # Possession state machine
 │       ├── cleanup.py             # Fixed-point cleanup
