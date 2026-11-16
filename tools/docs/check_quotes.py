@@ -320,11 +320,8 @@ def run_quote_check(doc_paths: List[str], repo_root: str = ".") -> Tuple[bool, L
 
 DEFAULT_DOCS = [
     "README.md",
-    "README_v2.md",
     "CONSTANTS.md",
     "TECHNICAL_DOCUMENT.md",
-    os.path.join("tools", "tuning", "README.md"),
-    os.path.join("legacy_v1", "README.md"),
 ]
 
 

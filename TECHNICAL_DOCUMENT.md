@@ -220,7 +220,6 @@ the-outliers-mtah2027/
 │   ├── tuning/                     # External tuning suite (SkillCorner data)
 │   │   ├── PLAN.md                 # Frozen pre-registered protocol
 │   │   ├── harness.py              # Grid search and bootstrap evaluator
-│   │   ├── README.md               # External results & diagnostic tables
 │   │   └── results/                # CSV and JSON result summaries
 │   └── docs/
 │       └── check_quotes.py         # Automated quote citation checker
@@ -228,7 +227,6 @@ the-outliers-mtah2027/
 ├── outputs_v2/                     # Output submission CSVs
 ├── legacy_v1/                      # Retired, superseded v1 codebase
 ├── CONSTANTS.md                    # Detailed parameter rationales
-├── README_v2.md                    # Extended technical manual
 ├── TECHNICAL_DOCUMENT.md           # Submission technical document
-└── README.md                       # Top-level repository guide
+└── README.md                       # Unified repository guide
 ```
