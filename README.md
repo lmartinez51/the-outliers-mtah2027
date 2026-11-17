@@ -5,8 +5,8 @@ Official competition repository for **More than a Hack 2027 (Phase 1: Automated 
 - **Team Name:** `The Outliers`
 - **Competition Track:** Phase 1 (Automated Ball Possession Tracking)
 - **Target Match:** `BAR-ATH` (FC Barcelona vs. Athletic Club, 199,319 video frames @ 25 fps)
-- **Primary Submission Deliverable:** `outputs_v2/submission_v2_1_external.csv` (SHA-256 `5b4c3db7ede46f497822604eda83d837836ea336a4da5dad2312492439c98c5a`)
-- **Baseline Fallback:** `outputs_v2/submission_v2.csv` (SHA-256 `89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2`, accessible via `--config apriori`)
+- **Current Multi-Signal Candidate:** `outputs_v2/submission_v2_1_external.csv` (SHA-256 `828baabcd1344a81fb57ed0c41007cb647c1dd6b40507e4beddef419c65d3525`)
+- **A-Priori Possession Configuration:** generated with `--config apriori` (SHA-256 `8853814bd01d753ac9390249df6171aca8d367ad2d5eff460ef20c8524f3e545`)
 
 **Status notice (Nov 2026).** Earlier versions of this repository (`v1`, now archived in [`legacy_v1/`](legacy_v1/)) fitted models and parameters using the public 5-minute ground-truth window. Following the organizers' rules clarification, `v1` was retired and superseded. The active `src/v2/` pipeline (`v2.0.1-apriori` and `v2.1-external`) never loads ground-truth labels or match video; all engineering constants were fixed *a priori* or tuned exclusively on external open data ([SkillCorner Open Data](https://github.com/SkillCorner/opendata.git)).
 
@@ -45,7 +45,7 @@ The `src/v2/` pipeline processes each graded half (`11,185..90,651` and `110,808
                ▼                                         ▼
 ┌──────────────────────────────┐         ┌──────────────────────────────┐
 │  3.2 Control Candidates      │         │  3.4 Dead-Ball Mask          │
-│  - Distance d_H, d_A         │         │  - Pre-kickoff dead window   │
+│  - Distance + local track ID │         │  - Pre-kickoff dead window   │
 │  - R_TOUCH <= 2.5 m          │         │  - Out-of-bounds (12 frames) │
 │  - MARGIN >= 0.75 m          │         │  - Collective Stop (p75<1.5) │
 └──────────────┬───────────────┘         └──────────────┬───────────────┘
@@ -57,6 +57,7 @@ The `src/v2/` pipeline processes each graded half (`11,185..90,651` and `110,808
 │  - Live intervals bounded by dead-ball mask                  │
 │  - First candidate establishes possessor (backfilled)        │
 │  - Opponent confirmation threshold T_CONFIRM = 30 f (1.2 s)  │
+│  - Confirmation evidence retains one local track identity    │
 │  - Confirmed turnover back-dated to opp_start                │
 │  - Uncontested / loose / occluded ball holds possessor       │
 └──────────────────────────────┬───────────────────────────────┘
@@ -77,6 +78,12 @@ The `src/v2/` pipeline processes each graded half (`11,185..90,651` and `110,808
 │  - Export: 199,319 rows (frame,label)                        │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+The primitive cache retains the nearest home and away tracking-slot IDs in
+addition to their distances. During turnover confirmation, evidence from
+different opposing slots is not accumulated into one continuous control run.
+Slots are treated as short-lived tracking identities, not guaranteed roster
+identities, because optical tracks can fragment or switch.
 
 ---
 
@@ -163,7 +170,8 @@ python3 -B -m unittest discover -s tests -p "test_*.py" -v
 5. `test_e_margin_and_rtouch_boundaries`: Validates `MARGIN` and `R_TOUCH` boundaries (tested on both active and `apriori`).
 6. `test_f_restart_backfill_and_hold_rule`: After dead-to-live transition, state resets; first candidate backfills; if none, hold.
 7. `test_g_out_of_bounds_boundary_and_t_oob`: `OOB_MARGIN` and `T_OOB` persistence boundary conditions.
-8. `test_h_collective_stop_boundaries_and_ball_skip`: `T_STOP - 1` vs `T_STOP`, `V_STOP` boundary, and uncomputable ball speed skip.
+8. `test_h_collective_stop_requires_multiple_signals`: verifies persistence,
+   unknown-ball neutrality, distributional motion, and supporting tag evidence.
 9. `test_i_cleanup_rules_and_pass_cap`: Cleanup rules (i), (ii), and 300-interleaved flicker fixed-point convergence.
 10. `test_j_half_independence`: Possessor state does not carry over from Half 1 to Half 2.
 11. `test_k_pre_kickoff_boundaries`: Pre-kickoff dead block spans `half_start..kickoff-1` for Half 2 and is empty for Half 1.
@@ -235,24 +243,29 @@ The harness executes baseline $\theta_0$ evaluation, an 81-configuration grid se
 | **Total Frames** | 199,319 | 199,319 |
 | **Graded Frames (H1 / H2)** | 158,857 (79,467 / 79,390) | 158,857 (79,467 / 79,390) |
 | **Ungraded Abstentions (`X`)** | 40,462 | 40,462 |
-| **Dead Ball (`D`) (H1 / H2)** | 49,565 (22,321 / 27,244) | 49,565 (22,321 / 27,244) |
-| **Live Home (`H`) (H1 / H2)** | 62,947 (32,762 / 30,185) | 64,600 (34,966 / 29,634) |
-| **Live Away (`A`) (H1 / H2)** | 46,345 (24,384 / 21,961) | 44,692 (22,180 / 22,512) |
-| **Possession Spells (H1 / H2)** | 274 (133 / 141) | 205 (104 / 101) |
-| **Mean Spell Duration (H1 / H2)** | 17.2 s / 14.8 s | 22.0 s / 20.7 s |
-| **Cleanup Iterations** | 2 passes | 2 passes |
+| **Dead Ball (`D`) (H1 / H2)** | 10,245 (3,089 / 7,156) | 10,245 (3,089 / 7,156) |
+| **Live Home (`H`) (H1 / H2)** | 82,166 (41,362 / 40,804) | 89,975 (47,558 / 42,417) |
+| **Live Away (`A`) (H1 / H2)** | 66,446 (35,016 / 31,430) | 58,637 (28,820 / 29,817) |
+| **Possession Spells (H1 / H2)** | 193 (96 / 97) | 133 (61 / 72) |
+| **Mean Spell Duration (H1 / H2)** | 31.8 s / 29.8 s | 50.1 s / 40.1 s |
+| **Cleanup Iterations (H1 / H2)** | 1 / 2 passes | 1 / 2 passes |
 
 ### Technical Limitations & Validation Status
 1. **Validation Status:** The v2/v2.1 pipeline has not been scored against private ground truth for BAR-ATH; no accuracy, macro-F1, or spell-F1 metric is reported for the match.
-2. **Smart Tagging Excluded from Dead Ball:** Smart Tagging event intervals are excluded because, as documented in [`starter/load_smart_tagging.py:38-39`](starter/load_smart_tagging.py):
-   > *"The tagging marks a ~5 s window around the restart rather than the instant, so the check below is containment, not equality."*
-   and in [`starter/load_smart_tagging.py:77-78`](starter/load_smart_tagging.py):
-   > *"the tagging marks a window around the restart, not the instant of it"*.
-   Applying these windows directly would mislabel several seconds of live play following restarts.
+2. **Smart Tagging Is Supporting Evidence Only:** Broad set-piece windows can
+   support an independently detected low-motion candidate. They never directly
+   become `D`; tracking determines entry and restart boundaries.
 3. **External Tuning Estimate:** The hold-out improvement (+0.023947 mean paired difference across 8 hold-out fixtures) is an empirical measurement on external broadcast tracking data, not a performance guarantee on BAR-ATH optical tracking. See [`CONSTANTS.md`](CONSTANTS.md) Section 5 for all boundary-effect and definition-discrepancy notes.
-4. **Dead-Ball Disparity:** External tuning evaluated under an oracle phase-complement dead-ball mask (46.52% pooled out-of-play share across all 20 matches), whereas BAR-ATH evaluates under a physical heuristic dead-ball mask (31.20% dead-ball share across graded frames, 49,565 / 158,857 frames).
-5. **Missing Ball Occlusion:** Ball coordinates are unavailable on 40.65% of graded frames in BAR-ATH (94,287 / 158,857 known; 64,570 unknown). During missing-ball intervals, the stoppage detector relies on player speed distribution.
-6. **Collective Stoppage Contribution:** The collective stop rule accounts for 44,637 of the 49,291 union dead-ball frames (~90.6% of dead-ball frames; 28.1% of graded match time).
+4. **Dead-Ball Distribution Shift:** The corrected detector produces 10,245
+   final `D` frames (6.45% of graded frames), down from 49,565. This large shift is
+   expected because missing ball was previously positive stop evidence, but it
+   requires external validation before promotion as a final competition model.
+5. **Missing Ball Occlusion:** Ball coordinates are unavailable on 40.65% of
+   graded frames. Missingness is now explicit and neutral; a missing-ball stoppage
+   needs deceleration, boundary, or set-piece support plus valid player motion.
+6. **Multi-Signal Contribution:** The raw collective mask contains 5,397 frames;
+   3,591 occur while the instantaneous ball is missing but are supported by an
+   independent initiating event rather than missingness itself.
 7. **Player Speed Units:** Documented in [`DATA.md:84-85`](DATA.md): *"position, and speed in m/s"*, consistent with empirical aggregates across graded frames (median 1.41 m/s, p90 3.85 m/s, max 9.43 m/s), despite vendor XML metadata template carrying `<Unit>kph</Unit>` ([`BAR-ATH_tactical_atd.xml:1136`](data/tactical/BAR-ATH_tactical_atd.xml)).
 
 ---

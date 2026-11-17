@@ -38,6 +38,7 @@ from src.v2.constants import (
 from src.v2.control_detector import detect_control_candidates
 from src.v2.dead_ball import compute_dead_ball_mask
 from src.v2.extractor import extract_v2_primitives
+from src.v2.smart_tagging import load_set_piece_support
 from src.v2.state_machine import compose_half_possession
 
 
@@ -118,6 +119,9 @@ def execute_pipeline(
     cache_path: str = os.path.join("data", "cache_v2_primitives.npz"),
     raw_txt_path: str = os.path.join("data", "tactical", "BAR-ATH_tactical_atd.txt"),
     raw_xml_path: str = os.path.join("data", "tactical", "BAR-ATH_tactical_atd.xml"),
+    smart_tagging_path: Optional[str] = os.path.join(
+        "data", "tactical", "BAR-ATH_tactical_smart_tagging.xml"
+    ),
     force_rebuild: bool = False,
     r_touch: Optional[float] = None,
     margin: Optional[float] = None,
@@ -167,7 +171,16 @@ def execute_pipeline(
     ball_y_m = prims["ball_y_m"]
     d_h1 = prims["d_h1"]
     d_a1 = prims["d_a1"]
+    nearest_home_track_id = prims["nearest_home_track_id"]
+    nearest_away_track_id = prims["nearest_away_track_id"]
     p75_speed = prims["p75_player_speed"]
+    median_speed = prims["median_player_speed"]
+    p90_speed = prims["p90_player_speed"]
+    fraction_low = prims["fraction_players_below_1ms"]
+    valid_speed_count = prims["valid_player_speed_count"]
+    smart_tag_support = load_set_piece_support(
+        smart_tagging_path, n_frames=N_VIDEO_FRAMES, fps=fps
+    )
 
     full_labels = np.full(N_VIDEO_FRAMES, LABEL_X, dtype=object)
 
@@ -190,7 +203,7 @@ def execute_pipeline(
         )
 
         # 3.2 Control candidates
-        candidates, _, _ = detect_control_candidates(
+        candidates, _, _, candidate_track_ids = detect_control_candidates(
             ball_valid=ball_valid,
             ball_known=ball_known,
             ball_x_m=bx,
@@ -203,6 +216,9 @@ def execute_pipeline(
             raw_xml_path=raw_xml_path,
             r_touch=eff_r_touch,
             margin=eff_margin,
+            nearest_home_track_id_cache=nearest_home_track_id,
+            nearest_away_track_id_cache=nearest_away_track_id,
+            return_track_ids=True,
         )
 
         # 3.4 Dead ball mask
@@ -214,6 +230,11 @@ def execute_pipeline(
             start_frame=s_fr,
             end_frame=e_fr,
             kickoff_frame=k_fr,
+            median_player_speed=median_speed,
+            p90_player_speed=p90_speed,
+            fraction_players_below_1ms=fraction_low,
+            valid_player_speed_count=valid_speed_count,
+            smart_tag_support=smart_tag_support,
         )
 
         # 3.3 & 3.5 State machine & composition (halves are independent)
@@ -224,6 +245,7 @@ def execute_pipeline(
             end_frame=e_fr,
             initial_possessor=None,
             t_confirm=eff_t_confirm,
+            candidate_track_ids=candidate_track_ids,
         )
 
         # 3.6 Cleanup to fixed point

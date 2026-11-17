@@ -31,8 +31,8 @@ from src.v2.constants import (
 )
 from src.v2.run_v2 import execute_pipeline
 
-HASH_V2_1 = "5b4c3db7ede46f497822604eda83d837836ea336a4da5dad2312492439c98c5a"
-HASH_APRIORI = "89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2"
+HASH_V2_1 = "828baabcd1344a81fb57ed0c41007cb647c1dd6b40507e4beddef419c65d3525"
+HASH_APRIORI = "8853814bd01d753ac9390249df6171aca8d367ad2d5eff460ef20c8524f3e545"
 
 
 class TestV2Pipeline(unittest.TestCase):
@@ -214,6 +214,10 @@ class TestV2Pipeline(unittest.TestCase):
             shutil.copy(
                 os.path.join("data", "tactical", "BAR-ATH_tactical_atd.xml"),
                 os.path.join(scratch_tactical, "BAR-ATH_tactical_atd.xml"),
+            )
+            shutil.copy(
+                os.path.join("data", "tactical", "BAR-ATH_tactical_smart_tagging.xml"),
+                os.path.join(scratch_tactical, "BAR-ATH_tactical_smart_tagging.xml"),
             )
 
             # Confirm no cache files exist in scratch_dir

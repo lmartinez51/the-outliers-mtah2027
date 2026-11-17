@@ -60,6 +60,10 @@ class TestCacheProvenance(unittest.TestCase):
                 self.assertEqual(int(cached["__cache_schema_version"].item()), CACHE_SCHEMA_VERSION)
                 self.assertIn("__raw_txt_sha256", cached.files)
                 self.assertIn("__raw_xml_sha256", cached.files)
+                self.assertEqual(cached["nearest_home_track_id"].dtype, np.int16)
+                self.assertEqual(cached["nearest_away_track_id"].dtype, np.int16)
+                self.assertEqual(int(cached["nearest_home_track_id"][0]), 0)
+                self.assertEqual(int(cached["nearest_away_track_id"][0]), 1)
 
             self._write_inputs(root, ball_x=0.20)
             second = extract_v2_primitives(
@@ -76,7 +80,10 @@ class TestCacheProvenance(unittest.TestCase):
                 key: np.zeros(2, dtype=np.float32)
                 for key in (
                     "ball_valid", "ball_x_m", "ball_y_m", "d_h1", "d_a1",
-                    "p75_player_speed",
+                    "p25_player_speed", "median_player_speed", "p75_player_speed",
+                    "p90_player_speed", "fraction_players_below_1ms",
+                    "valid_player_speed_count",
+                    "nearest_home_track_id", "nearest_away_track_id",
                 )
             }
             np.savez_compressed(cache_path, **legacy)
