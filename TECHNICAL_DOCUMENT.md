@@ -4,7 +4,7 @@
 **Competition:** More than a Hack 2027 (Phase 1: Automated Ball Possession Tracking)  
 **Target Fixture:** `BAR-ATH` (FC Barcelona vs. Athletic Club, 199,319 video frames @ 25 fps)  
 **Primary Output:** `outputs_v2/submission_v2_1_external.csv` (SHA-256 `5b4c3db7ede46f497822604eda83d837836ea336a4da5dad2312492439c98c5a`)  
-**Baseline Fallback:** `outputs_v2/submission_v2.csv` (SHA-256 `89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2`)
+**Reproducible Baseline Fallback:** generated with `--config apriori` as `outputs_v2/submission_v2.csv` (SHA-256 `89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2`)
 
 ---
 
@@ -13,7 +13,7 @@
 This document describes the v2.1 deterministic possession tracking architecture developed by Team The Outliers for Phase 1 of the competition. 
 
 The pipeline operates offline on Metrica optical tracking data to predict frame-level possession (`H`, `A`, `D`, `X`). Following the competition rules, the methodology adheres to two fundamental constraints:
-1. **Zero Ground-Truth Exposure:** No parameter, heuristic threshold, or algorithmic rule was trained on, tuned against, or selected using the private ground-truth possession labels or the competition video.
+1. **Active-Pipeline Ground-Truth Independence:** No v2.1 parameter, heuristic threshold, or algorithmic decision was trained, tuned, or selected using either the public five-minute possession labels or private full-match ground truth. The competition video was not used to tune or select the submitted output.
 2. **Algorithmic Determinism:** The system is an offline state machine combining kinematic proximity filters, spatial margins, turnover confirmation timers, physical dead-ball boundary detectors, and fixed-point morphological cleanup.
 
 All engineering constants were either specified *a priori* from domain kinematics or tuned on open-source broadcast tracking data (SkillCorner Open Data) under a pre-registered protocol.
@@ -91,6 +91,14 @@ The v2.1 pipeline processes each match half independently through six modular st
 └──────────────────────────────────────────────────────────────┘
 ```
 
+### Possession Policy in Plain Language
+
+- A team becomes a control candidate when its nearest player is within `2.5 m` of the tracked ball and is at least `0.75 m` closer to the ball than the nearest opponent.
+- A live-ball change of possession is accepted only when the opposing candidate persists for 30 frames (1.2 seconds). Once confirmed, the transition is backdated to the first frame of that persistent opposing-candidate run.
+- An isolated touch, deflection, challenge, aerial duel, loose ball, or tracking gap does not immediately change possession. Without a confirmed opposing candidate, the state machine holds the previous possessor.
+- After a restart, possession is reset. The first valid control candidate establishes the possessor, and that label is backfilled to the beginning of the live segment.
+- Frames detected as out of play receive `D`. Frames outside the two graded intervals receive `X`; the pipeline does not abstain inside a graded interval.
+
 ### Parameter Specification and Classification Tiers
 
 Parameters are categorized into two tiers:
@@ -161,7 +169,7 @@ The tuning experiment was specified and locked in `tools/tuning/PLAN.md` prior t
 ## 5. Compliance Statement
 
 - **Data Inputs:** The v2/v2.1 codebase reads automatic tracking files (`BAR-ATH_tactical_atd.txt`, `BAR-ATH_tactical_atd.xml`). It does not open, read, or reference `data/tactical/BAR-ATH_tactical.mp4`, `data/tactical/BAR-ATH_smart_tagging.csv`, or any file in `evaluation/gt/`.
-- **Ground-Truth Independence:** The pipeline contains zero neural weights, zero random seeds, and was never optimized against ground-truth possession labels.
+- **Ground-Truth Independence:** The submission-generation pipeline contains zero neural weights and no randomized operations, and it was never optimized against BAR-ATH ground-truth possession labels. Fixed random seeds are used only by the separate, reproducible bootstrap analysis of external SkillCorner results.
 - **Historical v1 Retirement:** Earlier iterations of this repository fitted models and parameters on the public 5-minute ground-truth window. Following the organizers' rule clarification that parameter selection on ground truth is prohibited, Version 1 was retired, superseded, and archived in `legacy_v1/`. Version 2.1 is independent of legacy v1 code.
 
 ---
@@ -186,15 +194,15 @@ python -B -m src.v2.run_v2 --overwrite
 - `outputs_v2/submission_v2.csv`: `89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2`
 
 ### Measured Runtime and Environment
-- **Platform:** Windows, Python 3.12.0, NumPy 2.2.6.
+- **Environment:** Developed and benchmarked with Python 3.12.0 and NumPy 2.2.6. Pinned dependencies and the automated test suite support reproducible execution across standard Python environments.
 - **Execution Speed:** ~2.75 seconds with cached primitives (`data/cache_v2_primitives.npz`); ~8.64 seconds for fresh parsing of the raw 199,319-line ATD text file.
-- **Testing:** The automated test suite (`tests/`) contains 23 tests verifying ground-truth firewall integrity, pipeline determinism, official format validation, spec conformance, clean-clone reproducibility, and quote accuracy.
+- **Testing:** The automated test suite (`tests/`) contains 28 tests verifying ground-truth firewall integrity, pipeline determinism, official format validation, spec conformance, clean-clone reproducibility, cache hardening, external-data isolation, and quote accuracy.
 
 ---
 
 ## 7. Known Structural Diagnostics & Limitations
 
-1. **Absence of BAR-ATH Ground-Truth Metrics:** Because ground-truth data was not opened, no accuracy, macro-F1, or spell-F1 score is reported for BAR-ATH.
+1. **Absence of BAR-ATH Ground-Truth Metrics:** Because v2.1 was not evaluated or tuned against BAR-ATH ground-truth labels, no accuracy, macro-F1, or spell-F1 score is reported for BAR-ATH.
 2. **Dead-Ball Distribution:** On BAR-ATH, predicted dead-ball (`D`) represents 31.20% of graded frames (49,565 / 158,857 frames), compared to a 46.52% pooled out-of-play share on external broadcast data.
 3. **Dominance of Collective Stoppage:** Collective player deceleration accounts for 44,637 of the 49,291 union dead-ball frames (~90.6% of dead frames; 28.1% of graded frames).
 4. **Ball Occlusion Gaps:** Ball tracking is absent on 40.65% of graded frames (94,287 known vs 64,570 missing). When the ball is untracked, control candidates cannot be declared, and the state machine holds prior possession until dead ball or re-detection.
@@ -224,7 +232,7 @@ the-outliers-mtah2027/
 │   └── docs/
 │       └── check_quotes.py         # Automated quote citation checker
 ├── tests/                          # Compliance, unit, and quote tests
-├── outputs_v2/                     # Output submission CSVs
+├── outputs_v2/                     # Locally generated submission CSVs (Git-ignored)
 ├── legacy_v1/                      # Retired, superseded v1 codebase
 ├── CONSTANTS.md                    # Detailed parameter rationales
 ├── TECHNICAL_DOCUMENT.md           # Submission technical document
