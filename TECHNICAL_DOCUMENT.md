@@ -3,8 +3,8 @@
 **Team:** The Outliers  
 **Competition:** More than a Hack 2027 (Phase 1: Automated Ball Possession Tracking)  
 **Target Fixture:** `BAR-ATH` (FC Barcelona vs. Athletic Club, 199,319 video frames @ 25 fps)  
-**Primary Output:** `outputs_v2/submission_v2_1_external.csv` (SHA-256 `5b4c3db7ede46f497822604eda83d837836ea336a4da5dad2312492439c98c5a`)  
-**Reproducible Baseline Fallback:** generated with `--config apriori` as `outputs_v2/submission_v2.csv` (SHA-256 `89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2`)
+**Current Multi-Signal Candidate:** `outputs_v2/submission_v2_1_external.csv` (SHA-256 `828baabcd1344a81fb57ed0c41007cb647c1dd6b40507e4beddef419c65d3525`)
+**A-Priori Possession Configuration:** generated with `--config apriori` as `outputs_v2/submission_v2.csv` (SHA-256 `8853814bd01d753ac9390249df6171aca8d367ad2d5eff460ef20c8524f3e545`)
 
 ---
 
@@ -33,10 +33,12 @@ All engineering constants were either specified *a priori* from domain kinematic
     > *"does not kick off until **113,742**"*
 - **Graded Block Boundaries:** Half 1 (`11,185..90,651`, 79,467 frames) and Half 2 (`110,808..190,197`, 79,390 frames), summing to 158,857 graded frames. All 40,462 frames outside these blocks are assigned `X`.
 
-### 2.2 Excluded Assets
+### 2.2 Supporting and Excluded Assets
 - **Competition Video (`BAR-ATH_tactical.mp4`):** Viewed visually only to understand what counts as possession; not decoded, read, or processed by the pipeline or by any tuning code. No video file is part of the repository, and the pipeline's output was not checked against the video.
-- **Smart Tagging (`BAR-ATH_smart_tagging.csv`):** Excluded from dead-ball masking because event timestamps mark broad intervals rather than exact restarts, as documented in (starter/load_smart_tagging.py:38-39):
-  > *"The tagging marks a ~5 s window around the restart rather than the instant, so the check below is containment, not equality."*
+- **Smart Tagging (`BAR-ATH_tactical_smart_tagging.xml`):** Set-piece windows
+  support independently detected low-motion candidates. Broad tag windows are
+  never copied directly into the dead-ball mask; tracking and restart hysteresis
+  determine the final boundaries.
 - **Ground Truth (`evaluation/gt/`):** Never loaded, opened, or imported by the pipeline.
 - **Legacy v1 Models:** Machine learning models (GBDT classifiers, neural embeddings) and probability caches from earlier iterations are excluded and archived in `legacy_v1/`.
 
@@ -60,7 +62,7 @@ The v2.1 pipeline processes each match half independently through six modular st
 │  3.2 Control Candidates      │         │  3.4 Physical Dead-Ball Mask │
 │  - d_H, d_A to ball          │         │  - Pre-kickoff dead window   │
 │  - d <= R_TOUCH (2.5 m)      │         │  - Out-of-bounds (12 frames) │
-│  - Margin >= MARGIN (0.75 m) │         │  - Collective Stop (p75<1.5) │
+│  - Margin >= MARGIN (0.75 m) │         │  - Multi-signal stop/restart │
 └──────────────┬───────────────┘         └──────────────┬───────────────┘
                │                                         │
                └────────────────────┬────────────────────┘
@@ -94,6 +96,7 @@ The v2.1 pipeline processes each match half independently through six modular st
 ### Possession Policy in Plain Language
 
 - A team becomes a control candidate when its nearest player is within `2.5 m` of the tracked ball and is at least `0.75 m` closer to the ball than the nearest opponent.
+- The extractor also retains the nearest home and away tracking-slot IDs. Turnover confirmation requires identity-consistent opposing evidence; a switch between valid opposing slots starts a new confirmation run. Slots are treated as local track identities because optical tracks can fragment or switch.
 - A live-ball change of possession is accepted only when the opposing candidate persists for 30 frames (1.2 seconds). Once confirmed, the transition is backdated to the first frame of that persistent opposing-candidate run.
 - An isolated touch, deflection, challenge, aerial duel, loose ball, or tracking gap does not immediately change possession. Without a confirmed opposing candidate, the state machine holds the previous possessor.
 - After a restart, possession is reset. The first valid control candidate establishes the possessor, and that label is backfilled to the beginning of the live segment.
@@ -190,8 +193,8 @@ python -B -m src.v2.run_v2 --overwrite
 ```
 
 ### Bit-for-Bit Cryptographic Hashes
-- `outputs_v2/submission_v2_1_external.csv`: `5b4c3db7ede46f497822604eda83d837836ea336a4da5dad2312492439c98c5a`
-- `outputs_v2/submission_v2.csv`: `89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2`
+- `outputs_v2/submission_v2_1_external.csv`: `828baabcd1344a81fb57ed0c41007cb647c1dd6b40507e4beddef419c65d3525`
+- `outputs_v2/submission_v2.csv`: `8853814bd01d753ac9390249df6171aca8d367ad2d5eff460ef20c8524f3e545`
 
 ### Measured Runtime and Environment
 - **Environment:** Developed and benchmarked with Python 3.12.0 and NumPy 2.2.6. Pinned dependencies and the automated test suite support reproducible execution across standard Python environments.
@@ -203,9 +206,15 @@ python -B -m src.v2.run_v2 --overwrite
 ## 7. Known Structural Diagnostics & Limitations
 
 1. **Absence of BAR-ATH Ground-Truth Metrics:** Because v2.1 was not evaluated or tuned against BAR-ATH ground-truth labels, no accuracy, macro-F1, or spell-F1 score is reported for BAR-ATH.
-2. **Dead-Ball Distribution:** On BAR-ATH, predicted dead-ball (`D`) represents 31.20% of graded frames (49,565 / 158,857 frames), compared to a 46.52% pooled out-of-play share on external broadcast data.
-3. **Dominance of Collective Stoppage:** Collective player deceleration accounts for 44,637 of the 49,291 union dead-ball frames (~90.6% of dead frames; 28.1% of graded frames).
-4. **Ball Occlusion Gaps:** Ball tracking is absent on 40.65% of graded frames (94,287 known vs 64,570 missing). When the ball is untracked, control candidates cannot be declared, and the state machine holds prior possession until dead ball or re-detection.
+2. **Dead-Ball Distribution:** The validity-aware detector predicts 10,245 final
+   `D` frames (6.45% of graded frames). This is a major structural change from the
+   previous 49,565 frames and remains an external-validation target.
+3. **Multi-Signal Stoppage:** The raw collective mask contains 5,397 frames. It
+   requires distributional player inactivity plus stationary-ball or bounded
+   boundary/deceleration/set-piece evidence and asymmetric restart hysteresis.
+4. **Ball Occlusion Gaps:** Ball tracking is absent on 40.65% of graded frames.
+   Unknown ball motion supplies no positive evidence. Of the collective mask,
+   3,591 frames have missing instantaneous ball tracking but independent support.
 5. **$G_{\text{INTERP}}$ Invariance on BAR-ATH:** On BAR-ATH, changing $G_{\text{INTERP}}$ between 30 frames (1.2 s) and 50 frames (2.0 s) produces zero label differences across all 158,857 graded frames, because all missing-ball gaps bridged by interpolation are $\le 30$ frames (1.2 s).
 
 ---

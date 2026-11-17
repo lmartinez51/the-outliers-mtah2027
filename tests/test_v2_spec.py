@@ -70,6 +70,24 @@ class TestV2SpecConformance(unittest.TestCase):
         for f in range(opp_start, opp_start + T_CONFIRM):
             self.assertEqual(labels[f], LABEL_A, f"Frame {f} should be back-dated to A")
 
+    def test_identity_switch_does_not_accumulate_false_turnover(self):
+        """Alternating opponent tracks cannot combine into one confirmation run."""
+        n = 20
+        dead = np.zeros(n, dtype=bool)
+        candidates = np.full(n, LABEL_A, dtype=object)
+        candidates[0] = LABEL_H
+        track_ids = np.full(n, -1, dtype=np.int16)
+        track_ids[0] = 2
+        track_ids[1:6] = 20
+        track_ids[6:] = 21
+
+        labels, _ = compose_half_possession(
+            dead, candidates, 0, n - 1, initial_possessor=LABEL_H,
+            t_confirm=10, candidate_track_ids=track_ids,
+        )
+        self.assertTrue(np.all(labels[:6] == LABEL_H))
+        self.assertTrue(np.all(labels[6:] == LABEL_A))
+
     def test_b_candidate_resets_opponent_counter(self):
         """(b) Current possessor resets opponent counter; no-candidate frames neither reset nor increment."""
         n = 150
@@ -235,48 +253,71 @@ class TestV2SpecConformance(unittest.TestCase):
         self.assertEqual(int(np.sum(oob_exact)), 12, "12 frames of OOB (== T_OOB) must trigger dead ball")
         self.assertTrue(np.all(oob_exact[5:17]))
 
-    def test_h_collective_stop_boundaries_and_ball_skip(self):
-        """(h) COLLECTIVE_STOP: T_STOP - 1 vs T_STOP; V_STOP boundary; uncomputable ball skipped."""
-        n = 200
+    def test_h_collective_stop_requires_multiple_signals(self):
+        """Unknown ball is neutral; distribution + independent support is required."""
+        n = 240
         known = np.ones(n, dtype=bool)
         bx = np.zeros(n, dtype=np.float32)
         by = np.zeros(n, dtype=np.float32)
-
-        # 1. Persistence T_STOP - 1 (74) vs T_STOP (75) with speed_smooth=1
         p75_74 = np.full(n, 3.0, dtype=np.float32)
-        p75_74[20:94] = 0.5  # Exactly 74 frames
+        median_74 = np.full(n, 2.0, dtype=np.float32)
+        p90_74 = np.full(n, 4.0, dtype=np.float32)
+        fraction_74 = np.full(n, 0.1, dtype=np.float32)
+        counts = np.full(n, 22.0, dtype=np.float32)
+        p75_74[20:94], median_74[20:94], p90_74[20:94], fraction_74[20:94] = 1.0, 0.5, 1.5, 0.8
         _, _, _, stop_74 = compute_dead_ball_mask(
-            known, bx, by, p75_74, 0, n - 1, 0, speed_smooth=1, t_stop=T_STOP
+            known, bx, by, p75_74, 0, n - 1, 0, speed_smooth=1, t_stop=T_STOP,
+            median_player_speed=median_74, p90_player_speed=p90_74,
+            fraction_players_below_1ms=fraction_74, valid_player_speed_count=counts,
         )
         self.assertEqual(int(np.sum(stop_74)), 0, "T_STOP - 1 frames must not trigger stop")
 
-        p75_75 = np.full(n, 3.0, dtype=np.float32)
-        p75_75[20:95] = 0.5  # Exactly 75 frames
+        p75_75, median_75, p90_75, fraction_75 = map(
+            np.copy, (p75_74, median_74, p90_74, fraction_74)
+        )
+        p75_75[94], median_75[94], p90_75[94], fraction_75[94] = 1.0, 0.5, 1.5, 0.8
         _, _, _, stop_75 = compute_dead_ball_mask(
-            known, bx, by, p75_75, 0, n - 1, 0, speed_smooth=1, t_stop=T_STOP
+            known, bx, by, p75_75, 0, n - 1, 0, speed_smooth=1, t_stop=T_STOP,
+            median_player_speed=median_75, p90_player_speed=p90_75,
+            fraction_players_below_1ms=fraction_75, valid_player_speed_count=counts,
         )
         self.assertEqual(int(np.sum(stop_75)), 75, "T_STOP frames must trigger stop")
         self.assertTrue(np.all(stop_75[20:95]))
 
-        # 2. V_STOP boundary (1.5 m/s)
-        p75_boundary = np.full(n, V_STOP, dtype=np.float32)
-        _, _, _, stop_at_b = compute_dead_ball_mask(known, bx, by, p75_boundary, 0, n - 1, 0)
-        self.assertEqual(int(np.sum(stop_at_b)), 0, "p75 == V_STOP is not stopped")
-
-        p75_below_b = np.full(n, V_STOP - 0.01, dtype=np.float32)
-        _, _, _, stop_below_b = compute_dead_ball_mask(known, bx, by, p75_below_b, 0, n - 1, 0)
-        self.assertEqual(int(np.sum(stop_below_b)), n, "p75 < V_STOP must trigger stop")
-
-        # 3. V_BALL_STOP boundary (1.0 m/s)
-        # Moving at 1.0 m/s: dx = 1.0 m across 24 frames
-        bx_fast = np.array([f * 1.0 for f in range(n)], dtype=np.float32)
-        _, _, _, stop_ball_fast = compute_dead_ball_mask(known, bx_fast, by, p75_below_b, 0, n - 1, 0)
+        # A clearly moving ball vetoes a low-motion formation without event support.
+        p75_low = np.full(n, 1.0, dtype=np.float32)
+        median_low = np.full(n, 0.5, dtype=np.float32)
+        p90_low = np.full(n, 1.5, dtype=np.float32)
+        fraction_low = np.full(n, 0.8, dtype=np.float32)
+        bx_fast = np.array([f * 0.1 for f in range(n)], dtype=np.float32)
+        _, _, _, stop_ball_fast = compute_dead_ball_mask(
+            known, bx_fast, by, p75_low, 0, n - 1, 0,
+            median_player_speed=median_low, p90_player_speed=p90_low,
+            fraction_players_below_1ms=fraction_low, valid_player_speed_count=counts,
+        )
         self.assertEqual(int(np.sum(stop_ball_fast)), 0, "Ball speed >= V_BALL_STOP must block stop")
 
-        # 4. Unknown ball skip:
+        # Missing ball is neutral, not stationary.
         known_empty = np.zeros(n, dtype=bool)
-        _, _, _, stop_unknown = compute_dead_ball_mask(known_empty, bx_fast, by, p75_below_b, 0, n - 1, 0)
-        self.assertEqual(int(np.sum(stop_unknown)), n, "Unknown ball must skip ball condition")
+        _, _, _, stop_unknown = compute_dead_ball_mask(
+            known_empty, bx_fast, by, p75_low, 0, n - 1, 0,
+            median_player_speed=median_low, p90_player_speed=p90_low,
+            fraction_players_below_1ms=fraction_low, valid_player_speed_count=counts,
+        )
+        self.assertEqual(int(np.sum(stop_unknown)), 0, "Unknown ball must provide no stop evidence")
+
+        # Smart Tagging supports independently observed low player motion, but its
+        # whole broad window is not copied into the dead mask.
+        support = np.zeros(n, dtype=bool)
+        support[10:210] = True
+        _, _, _, stop_tagged = compute_dead_ball_mask(
+            known_empty, bx, by, p75_low, 0, n - 1, 0,
+            median_player_speed=median_low, p90_player_speed=p90_low,
+            fraction_players_below_1ms=fraction_low, valid_player_speed_count=counts,
+            smart_tag_support=support,
+        )
+        self.assertFalse(np.any(stop_tagged[:10]))
+        self.assertTrue(np.any(stop_tagged[10:210]))
 
     def test_i_cleanup_rules_and_pass_cap(self):
         """(i) Cleanup rules (i), (ii), and 300-interleaved flicker fixed-point convergence."""

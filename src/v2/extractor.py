@@ -19,14 +19,21 @@ from src.v2.constants import (
 )
 
 
-CACHE_SCHEMA_VERSION = 1
+CACHE_SCHEMA_VERSION = 3
 PRIMITIVE_DTYPES = {
     "ball_valid": np.dtype(np.float32),
     "ball_x_m": np.dtype(np.float32),
     "ball_y_m": np.dtype(np.float32),
     "d_h1": np.dtype(np.float32),
     "d_a1": np.dtype(np.float32),
+    "nearest_home_track_id": np.dtype(np.int16),
+    "nearest_away_track_id": np.dtype(np.int16),
+    "p25_player_speed": np.dtype(np.float32),
+    "median_player_speed": np.dtype(np.float32),
     "p75_player_speed": np.dtype(np.float32),
+    "p90_player_speed": np.dtype(np.float32),
+    "fraction_players_below_1ms": np.dtype(np.float32),
+    "valid_player_speed_count": np.dtype(np.float32),
 }
 
 
@@ -162,7 +169,14 @@ def extract_v2_primitives(
     ball_y_m = np.full(n_frames, np.nan, dtype=np.float32)
     d_h1 = np.full(n_frames, np.nan, dtype=np.float32)
     d_a1 = np.full(n_frames, np.nan, dtype=np.float32)
-    p75_player_speed = np.zeros(n_frames, dtype=np.float32)
+    nearest_home_track_id = np.full(n_frames, -1, dtype=np.int16)
+    nearest_away_track_id = np.full(n_frames, -1, dtype=np.int16)
+    p25_player_speed = np.full(n_frames, np.nan, dtype=np.float32)
+    median_player_speed = np.full(n_frames, np.nan, dtype=np.float32)
+    p75_player_speed = np.full(n_frames, np.nan, dtype=np.float32)
+    p90_player_speed = np.full(n_frames, np.nan, dtype=np.float32)
+    fraction_players_below_1ms = np.full(n_frames, np.nan, dtype=np.float32)
+    valid_player_speed_count = np.zeros(n_frames, dtype=np.float32)
 
     # 3. Stream parse raw tracking file line-by-line
     with open(raw_txt_path, "r", encoding="utf-8") as f:
@@ -212,22 +226,28 @@ def extract_v2_primitives(
                 if has_ball:
                     dist = math.hypot(px - bx_m, py - by_m)
                     if team_of_track[slot_idx] == 0:
-                        h_dists.append(dist)
+                        h_dists.append((dist, slot_idx))
                     else:
-                        a_dists.append(dist)
+                        a_dists.append((dist, slot_idx))
 
             if has_ball:
                 if h_dists:
-                    d_h1[idx] = min(h_dists)
+                    home_dist, home_track = min(h_dists)
+                    d_h1[idx] = home_dist
+                    nearest_home_track_id[idx] = home_track
                 if a_dists:
-                    d_a1[idx] = min(a_dists)
+                    away_dist, away_track = min(a_dists)
+                    d_a1[idx] = away_dist
+                    nearest_away_track_id[idx] = away_track
 
             if valid_speeds:
-                if len(valid_speeds) >= 2:
-                    valid_speeds.sort()
-                    p75_player_speed[idx] = valid_speeds[int(0.75 * (len(valid_speeds) - 1))]
-                else:
-                    p75_player_speed[idx] = valid_speeds[0]
+                speeds = np.asarray(valid_speeds, dtype=np.float32)
+                p25_player_speed[idx] = float(np.percentile(speeds, 25))
+                median_player_speed[idx] = float(np.percentile(speeds, 50))
+                p75_player_speed[idx] = float(np.percentile(speeds, 75))
+                p90_player_speed[idx] = float(np.percentile(speeds, 90))
+                fraction_players_below_1ms[idx] = float(np.mean(speeds < 1.0))
+                valid_player_speed_count[idx] = float(len(speeds))
 
     primitives = {
         "ball_valid": ball_valid,
@@ -235,7 +255,14 @@ def extract_v2_primitives(
         "ball_y_m": ball_y_m,
         "d_h1": d_h1,
         "d_a1": d_a1,
+        "nearest_home_track_id": nearest_home_track_id,
+        "nearest_away_track_id": nearest_away_track_id,
+        "p25_player_speed": p25_player_speed,
+        "median_player_speed": median_player_speed,
         "p75_player_speed": p75_player_speed,
+        "p90_player_speed": p90_player_speed,
+        "fraction_players_below_1ms": fraction_players_below_1ms,
+        "valid_player_speed_count": valid_player_speed_count,
     }
 
     if cache_path:

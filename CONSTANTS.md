@@ -54,15 +54,15 @@ Under the Stage 3 tuning protocol, Tier B possession constants were tuned on ext
 
 ## 3. Additional Algorithmic Conventions & Formulas
 
-1. **Player Speed Percentile (`p75`):**
-   - Percentile value: `0.75` (75th percentile of active, non-NaN player speeds).
-   - Nearest-rank indexing formula implemented in `extractor.py:134`:
-     ```python
-     valid_speeds.sort()
-     p75_player_speed[idx] = valid_speeds[int(0.75 * (len(valid_speeds) - 1))]
-     ```
-2. **Ball Velocity Uncomputability Skip:**
-   - In `dead_ball.py:128-130`, when evaluating centered ball velocity over $[f - 12, f + 12]$, if either endpoint is missing / unknown, the ball condition is skipped (`ball_is_stopped = True`), allowing the stoppage detector to evaluate based on collective player speed alone.
+1. **Player Speed Distribution:** The extractor records p25, median, p75, p90,
+   fraction below 1 m/s, and valid-player count. Missing observations are `NaN`,
+   never zero-speed observations.
+2. **Unknown Ball State:** If centered ball velocity cannot be calculated, ball
+   motion is `UNKNOWN` and contributes no stationary-ball evidence.
+3. **Multi-Signal Stoppage:** Entry requires a valid low-motion player
+   distribution plus a known stationary ball or bounded context from an observed
+   boundary exit, abrupt deceleration, or Smart Tagging set piece. Entry requires
+   75 frames; exit requires 10 frames above the 2 m/s restart thresholds.
 3. **Pitch Dimensions Source:**
    - Dimensions used: $105.3\text{ m} \times 68.0\text{ m}$ from `games.py:GAMES["BAR-ATH"]["pitch"]`.
    - The XML metadata header reports canonical dimensions $105.0\text{ m} \times 68.0\text{ m}$ ([`BAR-ATH_tactical_atd.xml:68-69`](data/tactical/BAR-ATH_tactical_atd.xml)). As documented in [`DATA.md:93-94`](DATA.md): *"The metadata reports 105 × 68 m; `games.py` carries 105.3 × 68.0, measured from the corrected tracking."*
@@ -79,7 +79,10 @@ Under the Stage 3 tuning protocol, Tier B possession constants were tuned on ext
 ## 5. Decision Record: Promotion of v2.1-external
 
 - **Date:** 2026-11-10
-- **Human Decision:** The team has decided that the primary submission for the competition is **`v2.1-external`** (`outputs_v2/submission_v2_1_external.csv`, SHA-256 `5b4c3db7ede46f497822604eda83d837836ea336a4da5dad2312492439c98c5a`), with the frozen a priori configuration **`v2.0.1-apriori`** (`outputs_v2/submission_v2.csv`, SHA-256 `89ff92a62a6e571430c0ff06716f6cf1136c8367cbf3eb1c3be4dfcfb04ef6f2`) preserved as the reproducible baseline fallback (available via `--config apriori`).
+- **Current deterministic artifact:** `outputs_v2/submission_v2_1_external.csv`,
+  SHA-256 `99e67062dd996cbf3a3608a111f2fa434131f8cde13b307a530905909029d737`.
+  The possession constants retain their external validation; the new dead-ball
+  detector is an engineering correction and has not yet been externally scored.
 - **Pre-Registered Adoption Criterion:** Promotion was executed strictly in accordance with the pre-registered decision rule in [`tools/tuning/PLAN.md:175-178`](tools/tuning/PLAN.md):
   > *"4. **All-or-Nothing Adoption Criterion:**"*
   > *- Candidate $\theta^*$ is adopted **as a whole** into `src/v2/` **IF AND ONLY IF**:*
@@ -110,4 +113,3 @@ Under the Stage 3 tuning protocol, Tier B possession constants were tuned on ext
   4. **Hold-Out Gain is an External Estimate, Not a BAR-ATH Guarantee:** The hold-out gain (+0.024 mean paired difference across the 8 hold-out fixtures; `tuning_summary.json:mean_paired_difference` = 0.023947) is an empirical measurement on external broadcast tracking data (SkillCorner repository at commit `4340d274572876239c154c90bc507a9b3250a656`, [ext:README.md:11](ext:README.md): *"Broadcast tracking data is tracking data collected through computer vision and machine learning out of the broadcast video"*), not a measured performance guarantee on BAR-ATH optical tracking ([`DATA.md:74`](DATA.md): *"Metrica's FIFA/EPTS export, a metadata XML plus a raw text file"*).
   5. **Temporal Resolution & Frame-Rate Conversion:** Constants were converted between physical durations (seconds) and discrete frames ($T_{\text{frames}} = \text{round}(T_{\text{seconds}} \times \text{fps})$). Discrete frame-rate aliasing differs: 10 fps cannot resolve event durations shorter than 0.10 s, whereas 25 fps resolves down to 0.04 s.
   6. **Measured $G_{\text{INTERP}}$ Invariance on BAR-ATH:** On the challenge match BAR-ATH, changing $G_{\text{INTERP}}$ between 30 frames (1.2 s) and 50 frames (2.0 s) resulted in **exactly zero changes** across all 158,857 graded frames: exactly 73 frames (0.05% of graded match time) are interpolated under both thresholds because every bridged missing-ball gap in the tracking data happens to be $\le 30$ frames (1.2 s). Total known ball frames remain identically 94,287 / 158,857 (59.35%).
-

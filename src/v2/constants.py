@@ -47,6 +47,15 @@ SPEED_SMOOTH: int = 25       # 25 frames (1 s): standard 1 s smoothing window
 V_STOP: float = 1.5          # 1.5 m/s: human walking pace applied to 75th percentile of player speeds
 V_BALL_STOP: float = 1.0     # 1.0 m/s: ball essentially at rest
 T_STOP: int = 75             # 75 frames (3 s): stoppage lasting at least a few seconds
+V_MEDIAN_STOP: float = 1.0
+V_P90_STOP: float = 2.0
+FRACTION_LOW_STOP: float = 0.65
+MIN_VALID_PLAYERS: int = 14
+V_PLAYER_RESTART: float = 2.0
+V_BALL_RESTART: float = 2.0
+DECEL_DELTA: float = 0.75
+T_EVENT_CONTEXT: int = 250
+T_RESTART: int = 10
 MIN_LIVE_FLICKER: int = 25   # 25 frames (1 s): shorter live segments between stoppages are not plausible plays
 MIN_DEAD_FLICKER: int = 12   # 12 frames (0.5 s): shorter dead segments inside one possession are noise
 

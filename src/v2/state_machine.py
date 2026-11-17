@@ -19,6 +19,7 @@ def compose_half_possession(
     end_frame: int,
     initial_possessor: Optional[str] = None,
     t_confirm: int = T_CONFIRM,
+    candidate_track_ids: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, str]:
     """Compose dead-ball and live possession labels for one half.
 
@@ -29,6 +30,9 @@ def compose_half_possession(
         end_frame: Last frame of the half.
         initial_possessor: Possessor carried from previous half or None.
         t_confirm: Candidate threshold to confirm possession change.
+        candidate_track_ids: Optional frame-local candidate slot IDs. When present,
+            evidence from different opponent tracks cannot be combined into one
+            turnover confirmation run.
 
     Returns:
         labels: String array of shape (N,) containing 'H', 'A', or 'D' in the half.
@@ -86,16 +90,29 @@ def compose_half_possession(
 
         opp_counter = 0
         opp_start: Optional[int] = None
+        opp_track_id = -1
 
         for t in range(first_cand_idx + 1, t_end + 1):
             c = candidates[t]
             if c == current_possessor:
                 opp_counter = 0
                 opp_start = None
+                opp_track_id = -1
                 labels[t] = current_possessor
             elif c is not None and c != current_possessor:
-                if opp_counter == 0:
+                candidate_track = (
+                    int(candidate_track_ids[t]) if candidate_track_ids is not None else -1
+                )
+                track_changed = (
+                    opp_counter > 0
+                    and candidate_track >= 0
+                    and opp_track_id >= 0
+                    and candidate_track != opp_track_id
+                )
+                if opp_counter == 0 or track_changed:
                     opp_start = t
+                    opp_counter = 0
+                    opp_track_id = candidate_track
                 opp_counter += 1
                 if opp_counter >= t_confirm:
                     opp_team = c
@@ -105,6 +122,7 @@ def compose_half_possession(
                     current_possessor = opp_team
                     opp_counter = 0
                     opp_start = None
+                    opp_track_id = -1
                 else:
                     labels[t] = current_possessor
             else:
