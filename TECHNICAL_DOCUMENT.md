@@ -199,7 +199,7 @@ python -B -m src.v2.run_v2 --overwrite
 ### Measured Runtime and Environment
 - **Environment:** Developed and benchmarked with Python 3.12.0 and NumPy 2.2.6. Pinned dependencies and the automated test suite support reproducible execution across standard Python environments.
 - **Execution Speed:** ~2.75 seconds with cached primitives (`data/cache_v2_primitives.npz`); ~8.64 seconds for fresh parsing of the raw 199,319-line ATD text file.
-- **Testing:** The automated test suite (`tests/`) contains 28 tests verifying ground-truth firewall integrity, pipeline determinism, official format validation, spec conformance, clean-clone reproducibility, cache hardening, external-data isolation, and quote accuracy.
+- **Testing:** The automated test suite (`tests/`) contains 32 tests verifying ground-truth firewall integrity, pipeline determinism, official format validation, spec conformance, clean-clone reproducibility, cache hardening, external-data isolation, and quote accuracy.
 
 ---
 
