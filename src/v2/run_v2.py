@@ -104,6 +104,13 @@ def compute_half_diagnostics(
     }
 
 
+def _ensure_output_parent(output_path: str) -> str:
+    """Create and return the absolute parent directory for an output path."""
+    parent = os.path.dirname(os.path.abspath(output_path))
+    os.makedirs(parent, exist_ok=True)
+    return parent
+
+
 def execute_pipeline(
     output_path: Optional[str] = None,
     config: str = "v2_1",
@@ -146,7 +153,7 @@ def execute_pipeline(
         eff_t_confirm = T_CONFIRM if t_confirm is None else t_confirm
         eff_g_interp = G_INTERP if g_interp is None else g_interp
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    _ensure_output_parent(output_path)
 
     # 1. Extract or load self-contained v2 primitives directly from tracking
     prims = extract_v2_primitives(

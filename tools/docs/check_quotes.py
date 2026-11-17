@@ -239,14 +239,18 @@ def verify_quote(q_item: Dict[str, any], repo_root: str = ".") -> Tuple[str, str
 
     # Resolve file path
     if is_ext:
+        external_root = os.environ.get("SKILLCORNER_DATA_DIR")
         candidates = [
             os.path.join(repo_root, "..", "ext_data", "skillcorner", path),
             os.path.join(repo_root, "..", "ext_data", path),
             os.path.expanduser(f"~/ext_data/skillcorner/{path}"),
             os.path.expanduser(f"~/ext_data/{path}"),
-            os.path.join(os.environ.get("SKILLCORNER_DATA_DIR", ""), path),
-            path,
         ]
+        if external_root:
+            candidates.insert(0, os.path.join(external_root, path))
+
+        # Never fall back to a bare relative path for ext: citations. Doing so
+        # can silently resolve ext:README.md to this repository's README.md.
         target_path = None
         for c in candidates:
             if c and os.path.exists(c):

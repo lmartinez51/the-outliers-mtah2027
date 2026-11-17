@@ -5,6 +5,7 @@ Extracts raw kinematic primitives directly from official optical tracking files
 without importing any legacy v1 modules or loading v1 caches.
 """
 
+import hashlib
 import math
 import os
 import xml.etree.ElementTree as ET
@@ -16,6 +17,91 @@ from src.v2.constants import (
     PITCH_LENGTH,
     PITCH_WIDTH,
 )
+
+
+CACHE_SCHEMA_VERSION = 1
+PRIMITIVE_DTYPES = {
+    "ball_valid": np.dtype(np.float32),
+    "ball_x_m": np.dtype(np.float32),
+    "ball_y_m": np.dtype(np.float32),
+    "d_h1": np.dtype(np.float32),
+    "d_a1": np.dtype(np.float32),
+    "p75_player_speed": np.dtype(np.float32),
+}
+
+
+def _sha256_file(path: str) -> str:
+    """Return a streaming SHA-256 digest for an input file."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _cache_metadata(
+    raw_txt_path: str,
+    raw_xml_path: str,
+    pitch_length: float,
+    pitch_width: float,
+    n_frames: int,
+) -> Dict[str, np.ndarray]:
+    """Build provenance metadata stored alongside cached primitives."""
+    return {
+        "__cache_schema_version": np.asarray(CACHE_SCHEMA_VERSION, dtype=np.int64),
+        "__raw_txt_sha256": np.asarray(_sha256_file(raw_txt_path)),
+        "__raw_xml_sha256": np.asarray(_sha256_file(raw_xml_path)),
+        "__pitch_length": np.asarray(pitch_length, dtype=np.float64),
+        "__pitch_width": np.asarray(pitch_width, dtype=np.float64),
+        "__n_frames": np.asarray(n_frames, dtype=np.int64),
+    }
+
+
+def _load_validated_cache(
+    cache_path: str,
+    raw_txt_path: str,
+    raw_xml_path: str,
+    pitch_length: float,
+    pitch_width: float,
+    n_frames: int,
+) -> Optional[Dict[str, np.ndarray]]:
+    """Load a cache only when its schema, inputs, and array contract match."""
+    if not os.path.isfile(cache_path):
+        return None
+    if not os.path.isfile(raw_txt_path) or not os.path.isfile(raw_xml_path):
+        return None
+
+    expected_metadata = _cache_metadata(
+        raw_txt_path, raw_xml_path, pitch_length, pitch_width, n_frames
+    )
+    try:
+        with np.load(cache_path, allow_pickle=False) as data:
+            required_keys = set(PRIMITIVE_DTYPES) | set(expected_metadata)
+            if not required_keys.issubset(data.files):
+                return None
+
+            if int(data["__cache_schema_version"].item()) != CACHE_SCHEMA_VERSION:
+                return None
+            if str(data["__raw_txt_sha256"].item()) != str(expected_metadata["__raw_txt_sha256"].item()):
+                return None
+            if str(data["__raw_xml_sha256"].item()) != str(expected_metadata["__raw_xml_sha256"].item()):
+                return None
+            if int(data["__n_frames"].item()) != n_frames:
+                return None
+            if float(data["__pitch_length"].item()) != float(pitch_length):
+                return None
+            if float(data["__pitch_width"].item()) != float(pitch_width):
+                return None
+
+            primitives: Dict[str, np.ndarray] = {}
+            for key, expected_dtype in PRIMITIVE_DTYPES.items():
+                arr = data[key]
+                if arr.shape != (n_frames,) or arr.dtype != expected_dtype:
+                    return None
+                primitives[key] = arr.copy()
+            return primitives
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
 
 
 def extract_v2_primitives(
@@ -41,9 +127,17 @@ def extract_v2_primitives(
     Returns:
         Dict mapping primitive names -> np.ndarray.
     """
-    if cache_path and os.path.isfile(cache_path) and not force_rebuild:
-        data = np.load(cache_path)
-        return {key: data[key] for key in data.files}
+    if cache_path and not force_rebuild:
+        cached = _load_validated_cache(
+            cache_path=cache_path,
+            raw_txt_path=raw_txt_path,
+            raw_xml_path=raw_xml_path,
+            pitch_length=pitch_length,
+            pitch_width=pitch_width,
+            n_frames=n_frames,
+        )
+        if cached is not None:
+            return cached
 
     if not os.path.isfile(raw_txt_path):
         raise FileNotFoundError(f"Raw tracking text file not found: {raw_txt_path}")
@@ -145,7 +239,11 @@ def extract_v2_primitives(
     }
 
     if cache_path:
-        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-        np.savez_compressed(cache_path, **primitives)
+        cache_parent = os.path.dirname(os.path.abspath(cache_path))
+        os.makedirs(cache_parent, exist_ok=True)
+        metadata = _cache_metadata(
+            raw_txt_path, raw_xml_path, pitch_length, pitch_width, n_frames
+        )
+        np.savez_compressed(cache_path, **primitives, **metadata)
 
     return primitives

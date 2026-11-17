@@ -209,9 +209,9 @@ the-outliers-mtah2027/
 ├── src/
 │   └── v2/                         # Active deterministic pipeline
 │       ├── constants.py            # Tier F and Tier B parameters
-│       ├── extraction.py           # ATD tracking parser & primitive builder
-│       ├── interpolation.py        # Kinematic ball trajectory interpolation
-│       ├── candidates.py           # Proximity & margin candidate filters
+│       ├── extractor.py            # ATD tracking parser & primitive builder
+│       ├── ball_tracker.py         # Kinematic ball trajectory interpolation
+│       ├── control_detector.py      # Proximity & margin candidate filters
 │       ├── dead_ball.py            # Boundary & collective stop masks
 │       ├── state_machine.py        # Possession transition state machine
 │       ├── cleanup.py              # Fixed-point morphological cleaner
